@@ -9,7 +9,7 @@ import { listingCopyTool, runListingCopy } from './tools/listing_copy.js'
 import { keywordStrategyTool, runKeywordStrategy } from './tools/keyword_strategy.js'
 
 const PORT = Number(process.env.PORT || 3000)
-const HOST = process.env.HOST || '0.0.0.0'
+const HOST = process.env.HOST?.trim()
 const APP_VERSION = pkg.version
 const RUNTIME_RECYCLE_MS = Number(process.env.MCP_RUNTIME_RECYCLE_MS || 0)
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -165,10 +165,13 @@ app.all('/mcp', async (req, res) => {
   }
 })
 
-const httpServer = app.listen(PORT, HOST, () => {
-  console.log(`[sellermate] v${APP_VERSION} http://${HOST}:${PORT}`)
-  console.log(`[sellermate] MCP endpoint: http://${HOST}:${PORT}/mcp`)
-  console.log(`[sellermate] privacy policy: http://${HOST}:${PORT}/docs/privacy-policy.html`)
+const httpServer = HOST ? app.listen(PORT, HOST, onListen) : app.listen(PORT, onListen)
+
+function onListen() {
+  const logHost = HOST || 'localhost'
+  console.log(`[sellermate] v${APP_VERSION} http://${logHost}:${PORT}`)
+  console.log(`[sellermate] MCP endpoint: http://${logHost}:${PORT}/mcp`)
+  console.log(`[sellermate] privacy policy: http://${logHost}:${PORT}/docs/privacy-policy.html`)
   console.log('[sellermate] note: Streamable HTTP session internals are SDK-managed; app-level request/runtime logs are enabled for leak diagnosis')
   if (RUNTIME_RECYCLE_MS > 0) {
     recycleTimer = setInterval(() => {
@@ -176,7 +179,7 @@ const httpServer = app.listen(PORT, HOST, () => {
     }, Math.max(1000, Math.floor(RUNTIME_RECYCLE_MS / 2)))
     console.log(`[mcp-runtime] periodic recycle enabled ms=${RUNTIME_RECYCLE_MS}`)
   }
-})
+}
 
 async function shutdown() {
   if (recycleTimer) clearInterval(recycleTimer)
