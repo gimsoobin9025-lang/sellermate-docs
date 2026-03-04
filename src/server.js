@@ -120,6 +120,10 @@ const app = express()
 app.use(express.json({ limit: '1mb' }))
 app.use('/docs', express.static(DOCS_DIR))
 
+app.get('/', (_req, res) => {
+  res.status(200).send('ok')
+})
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'sellermate-mcp', version: APP_VERSION })
 })
