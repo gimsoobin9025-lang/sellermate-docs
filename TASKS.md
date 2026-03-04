@@ -1,0 +1,27 @@
+# TASKS
+
+- [x] MCP SDK(@modelcontextprotocol/sdk) 기반 transport 전환
+- [x] tool 응답 structuredContent + content 동시 반환
+- [x] Tool input schema 단일 소스로 통합 (tools 모듈 기준)
+- [x] LLM fallback 사유 로깅 강화 (HTTP/parse/network/timeout 구분, 민감정보 비노출)
+- [x] LLM output schema 검증(누락/타입 오류 시 fallback)
+- [x] noFabricatedMetricsGuard 오탐 축소 + 정책 분리(hard violation / warning)
+- [x] regex lastIndex 안정화(test 의존 제거, replace 전후 비교)
+- [x] hard speculative metric 표현 치환 일관화
+- [x] guard 치환 테스트 추가 (`test/validation.guard.test.js`)
+- [x] validation 핵심 단위테스트 추가 (`requireFields`, `containsForbiddenWords`, parse-safe)
+- [x] package.json version ↔ serverInfo.version 동기화 (v0.4.0)
+- [x] `/mcp` POST-only + 405 일관 응답
+- [x] runtime/session 운영 가드 강화 (요청/런타임 로그 + optional recycle)
+- [ ] OAuth/인증 설계 (필요 시)
+  - [ ] Provider 선정 (Google/Apple/Kakao 등)
+  - [ ] 최소 Scope 정의 (least privilege)
+  - [ ] Token storage 정책 (암호화/만료/회전)
+  - [ ] Revocation/로그아웃 처리 정책
+  - [ ] Callback URL 환경별(dev/stage/prod) 확정
+  - [ ] Threat model 초안 (token 탈취, CSRF, redirect abuse)
+- [x] 앱스토어 제출용 privacy policy 정적 페이지 초안 (`docs/privacy-policy.html`)
+- [x] privacy policy placeholder 연락처 제거 + 출시 전 교체 TODO 블록 반영
+- [ ] 앱스토어 제출용 privacy policy 공개 URL 준비(정적 호스팅)
+- [x] `RELEASE_CHECKLIST.md` 생성 (제출 전 점검 항목)
+- [ ] 모바일/웹 크로스 테스트 케이스 10개 이상 추가
