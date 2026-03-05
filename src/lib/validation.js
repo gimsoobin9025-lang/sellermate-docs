@@ -64,8 +64,8 @@ export function noFabricatedMetricsGuard(text) {
     '(검색량|매출|전환율|CTR|순위|수익)[^\\n]{0,20}(예상|추정|전망)',
     '(예상|추정|전망)[^\\n]{0,20}(검색량|매출|전환율|CTR|순위|수익)',
     '약\\s*\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?\\s*(건|명|개|원|%)\\s*(검색량|매출|전환율|CTR|순위|수익)',
-    '(search\\s*volume|sales|revenue|conversion\\s*rate|BSR|CTR)[^\\n]{0,20}(estimated|projected|expected|approximately)',
-    '(estimated|projected|expected|approximately)[^\\n]{0,20}(search\\s*volume|sales|revenue|conversion\\s*rate|BSR|CTR)',
+    '(search\\s*volume|sales\\s*(?:rank|volume|data|figures)|revenue|conversion\\s*rate|BSR|CTR)[^\\n]{0,20}(estimated|projected|expected|approximately)',
+    '(estimated|projected|expected|approximately)[^\\n]{0,20}(search\\s*volume|sales\\s*(?:rank|volume|data|figures)|revenue|conversion\\s*rate|BSR|CTR)',
   ]
 
   const softNumericUnitPatternSources = [
