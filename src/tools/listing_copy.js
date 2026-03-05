@@ -27,9 +27,9 @@ function getListingOutputSchema(platform) {
   switch ((platform || '').toLowerCase()) {
     case 'amazon':
       return z.object({
-        title: z.string(),
-        bullet_points: z.array(z.string()),
-        product_description: z.string(),
+        title: z.string().max(200),
+        bullet_points: z.array(z.string()).min(3).max(5),
+        product_description: z.string().max(2000),
         backend_search_terms: z.string(),
         seo_tags: z.array(z.string()),
         forbidden_word_check: z.object({
@@ -41,8 +41,8 @@ function getListingOutputSchema(platform) {
 
     case 'ebay':
       return z.object({
-        title: z.string(),
-        subtitle: z.string(),
+        title: z.string().max(80),
+        subtitle: z.string().max(55).optional(),
         item_description: z.string(),
         item_specifics: z.record(z.string()),
         seo_tags: z.array(z.string()),

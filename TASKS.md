@@ -10,7 +10,7 @@
 - [x] hard speculative metric 표현 치환 일관화
 - [x] guard 치환 테스트 추가 (`test/validation.guard.test.js`)
 - [x] validation 핵심 단위테스트 추가 (`requireFields`, `containsForbiddenWords`, parse-safe)
-- [x] package.json version ↔ serverInfo.version 동기화 (v0.4.0)
+- [x] package.json version ↔ serverInfo.version 동기화 (v1.0.0)
 - [x] `/mcp` POST-only + 405 일관 응답
 - [x] runtime/session 운영 가드 강화 (요청/런타임 로그 + optional recycle)
 - [ ] OAuth/인증 설계 (필요 시)

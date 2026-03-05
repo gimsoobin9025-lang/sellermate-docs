@@ -26,3 +26,20 @@ test('generic numeric unit becomes warning only', () => {
   assert.deepEqual(out.warnings, ['soft_numeric_unit_detected'])
   assert.equal(out.text, input)
 })
+
+test('english hard metric pattern is redacted', () => {
+  const input = 'Estimated monthly search volume: 12000 for this keyword.'
+  const out = noFabricatedMetricsGuard(input)
+
+  assert.equal(out.policyViolation, true)
+  assert.match(out.text, /\[수치-삭제: 성과지표 추정 금지 정책\]/)
+})
+
+test('english generic numeric unit becomes warning only', () => {
+  const input = 'Keep 20 units in stock and ship within 3 days.'
+  const out = noFabricatedMetricsGuard(input)
+
+  assert.equal(out.policyViolation, false)
+  assert.deepEqual(out.warnings, ['soft_numeric_unit_detected'])
+  assert.equal(out.text, input)
+})

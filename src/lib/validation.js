@@ -49,15 +49,26 @@ export function noFabricatedMetricsGuard(text) {
     'CTR\\s*[:：]?\\s*\\d+\\.?\\d*%',
     '순위\\s*[:：]?\\s*\\d+',
     '예상\\s*수익\\s*[:：]?\\s*\\d+',
+    'monthly\\s*search\\s*volume\\s*[:：]?\\s*\\d+',
+    'search\\s*volume\\s*[:：]?\\s*\\d+',
+    'sales\\s*[:：]?\\s*\\d+',
+    'conversion\\s*rate\\s*[:：]?\\s*\\d+\\.?\\d*%',
+    'ranking\\s*[:：]?\\s*\\d+',
+    'estimated\\s*(profit|revenue)\\s*[:：]?\\s*\\d+',
   ]
 
   const hardSpeculativePatternSources = [
     '(검색량|매출|전환율|CTR|순위|수익)[^\\n]{0,20}(예상|추정|전망)',
     '(예상|추정|전망)[^\\n]{0,20}(검색량|매출|전환율|CTR|순위|수익)',
     '약\\s*\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?\\s*(건|명|개|원|%)\\s*(검색량|매출|전환율|CTR|순위|수익)',
+    '(search\\s*volume|sales|conversion\\s*rate|ctr|ranking|profit|revenue)[^\\n]{0,30}(estimate|estimated|projection|forecast)',
+    '(estimate|estimated|projection|forecast)[^\\n]{0,30}(search\\s*volume|sales|conversion\\s*rate|ctr|ranking|profit|revenue)',
   ]
 
-  const softNumericUnitPatternSources = ['\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?\\s*(건|명|개|원|%)']
+  const softNumericUnitPatternSources = [
+    '\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?\\s*(건|명|개|원|%)',
+    '\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?\\s*(units?|orders?|%|usd)',
+  ]
 
   const metricReplace = replaceWithReason(
     text,
