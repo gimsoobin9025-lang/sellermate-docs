@@ -1,2 +1,10 @@
-export const DISCLAIMER =
-  '면책: 본 결과는 전략 보조용 제안이며 실제 성과를 보장하지 않습니다. 검색량/매출/순위 등 실측 데이터는 공식 도구에서 반드시 재검증하세요.'
+export const DISCLAIMERS = {
+  ko: '면책: 본 결과는 전략 보조용 제안이며 실제 성과를 보장하지 않습니다. 검색량/매출/순위 등 실측 데이터는 공식 도구에서 반드시 재검증하세요.',
+  en: 'Disclaimer: This output is for strategic assistance only and does not guarantee actual performance. Re-validate search volume, sales, ranking, and other metrics with official tools.',
+}
+
+export function getDisclaimer(lang = 'ko') {
+  return DISCLAIMERS[lang] || DISCLAIMERS.ko
+}
+
+export const DISCLAIMER = getDisclaimer('ko')

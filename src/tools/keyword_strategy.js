@@ -2,11 +2,12 @@ import { z } from 'zod'
 import { DISCLAIMER } from '../lib/disclaimer.js'
 import { noFabricatedMetricsGuard, requireFields, sanitizeText } from '../lib/validation.js'
 import { maybeEnhanceWithLlm } from '../lib/llm.js'
+import { getPlatformConfig, GLOBAL_METRIC_RULE } from '../lib/platform-prompts.js'
 
 export const keywordStrategyTool = {
   name: 'keyword_strategy',
   title: 'Keyword Strategy Builder',
-  description: '상품 정보 기반 키워드 전략 제안',
+  description: 'Build keyword strategy for e-commerce platforms (Amazon, eBay, Coupang, SmartStore, etc.)',
   annotations: {
     readOnlyHint: true,
     openWorldHint: false,
@@ -16,6 +17,7 @@ export const keywordStrategyTool = {
     product_name: z.string(),
     category: z.string(),
     target_audience: z.string(),
+    platform: z.enum(['amazon', 'ebay', 'smartstore', 'coupang', '11st', 'instagram', 'all']).optional(),
     season: z.string().optional(),
     key_features: z.array(z.string()).min(1),
   },
@@ -40,6 +42,8 @@ export async function runKeywordStrategy(args) {
   const season = sanitizeText(args.season || '상시')
   const features = (args.key_features || []).map(sanitizeText).filter(Boolean)
 
+  const config = getPlatformConfig(args.platform || 'all')
+
   const fallback = {
     main_keywords: [product.replace(/\s+/g, ''), `${category} ${product}`],
     longtail_keywords: [
@@ -55,9 +59,10 @@ export async function runKeywordStrategy(args) {
   }
 
   const system = [
-    '너는 한국 이커머스 SEO 전략가다.',
-    '절대 검색량/매출/순위/전환율 등 추정 수치를 만들지 마라.',
-    '반드시 JSON object만 반환하라.',
+    config.keywordRole,
+    ...config.keywordRules,
+    GLOBAL_METRIC_RULE,
+    '반드시 JSON object만 반환하라. Return only a JSON object.',
     '필수 키: main_keywords, longtail_keywords, seasonal_keywords, priority_ranking, strategy_summary, content_direction, disclaimer',
     `disclaimer는 정확히 다음 문구 사용: ${DISCLAIMER}`,
   ].join('\n')

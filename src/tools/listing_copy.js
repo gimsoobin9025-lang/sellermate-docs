@@ -2,11 +2,12 @@ import { z } from 'zod'
 import { DISCLAIMER } from '../lib/disclaimer.js'
 import { containsForbiddenWords, noFabricatedMetricsGuard, requireFields, sanitizeText } from '../lib/validation.js'
 import { maybeEnhanceWithLlm } from '../lib/llm.js'
+import { getPlatformConfig, GLOBAL_METRIC_RULE } from '../lib/platform-prompts.js'
 
 export const listingCopyTool = {
   name: 'listing_copy',
   title: 'Listing Copy Generator',
-  description: '상품 정보 기반 상세페이지/광고 카피 생성',
+  description: 'Generate optimized listing copy for e-commerce platforms (Amazon, eBay, Coupang, SmartStore, etc.)',
   annotations: {
     readOnlyHint: true,
     openWorldHint: false,
@@ -16,30 +17,111 @@ export const listingCopyTool = {
     product_name: z.string(),
     selling_points: z.array(z.string()).min(1),
     target_audience: z.string(),
-    platform: z.enum(['smartstore', 'coupang', '11st', 'instagram', 'all']),
+    platform: z.enum(['amazon', 'ebay', 'smartstore', 'coupang', '11st', 'instagram', 'all']),
     tone: z.string(),
     forbidden_words: z.array(z.string()).optional(),
   },
 }
 
-const listingCopyOutputSchema = z.object({
-  title_options: z.array(z.string()),
-  detail_copy: z.object({
-    hook: z.string(),
-    body: z.string(),
-    closing_cta: z.string(),
-  }),
-  seo_tags: z.array(z.string()),
-  ad_copy: z.object({
-    platform: z.string(),
-    text: z.string(),
-  }),
-  forbidden_word_check: z.object({
-    found: z.array(z.string()),
-    warnings: z.array(z.string()),
-  }),
-  disclaimer: z.string(),
-})
+function getListingOutputSchema(platform) {
+  switch ((platform || '').toLowerCase()) {
+    case 'amazon':
+      return z.object({
+        title: z.string(),
+        bullet_points: z.array(z.string()),
+        product_description: z.string(),
+        backend_search_terms: z.string(),
+        seo_tags: z.array(z.string()),
+        forbidden_word_check: z.object({
+          found: z.array(z.string()),
+          warnings: z.array(z.string()),
+        }),
+        disclaimer: z.string(),
+      })
+
+    case 'ebay':
+      return z.object({
+        title: z.string(),
+        subtitle: z.string(),
+        item_description: z.string(),
+        item_specifics: z.record(z.string()),
+        seo_tags: z.array(z.string()),
+        forbidden_word_check: z.object({
+          found: z.array(z.string()),
+          warnings: z.array(z.string()),
+        }),
+        disclaimer: z.string(),
+      })
+
+    default:
+      return z.object({
+        title_options: z.array(z.string()),
+        detail_copy: z.object({
+          hook: z.string(),
+          body: z.string(),
+          closing_cta: z.string(),
+        }),
+        seo_tags: z.array(z.string()),
+        ad_copy: z.object({
+          platform: z.string(),
+          text: z.string(),
+        }),
+        forbidden_word_check: z.object({
+          found: z.array(z.string()),
+          warnings: z.array(z.string()),
+        }),
+        disclaimer: z.string(),
+      })
+  }
+}
+
+function buildListingFallback(platform, { product, audience, tone, points }) {
+  switch ((platform || '').toLowerCase()) {
+    case 'amazon':
+      return {
+        title: `${product} - ${points[0] || 'Premium Quality'} - ${points[1] || 'Best Choice'} for ${audience}`,
+        bullet_points: points
+          .slice(0, 5)
+          .map((p) => `${p.charAt(0).toUpperCase() + p.slice(1)}: Designed for ${audience}`),
+        product_description: `Discover ${product}, crafted for ${audience}. Key features: ${points.join(', ')}.`,
+        backend_search_terms: points.map((p) => p.toLowerCase().replace(/\s+/g, ' ')).join(', '),
+        seo_tags: [product, ...points.slice(0, 3)],
+        forbidden_word_check: { found: [], warnings: [] },
+        disclaimer: DISCLAIMER,
+      }
+
+    case 'ebay':
+      return {
+        title: `${product} ${points[0] || ''} - ${audience} ${points[1] || ''}`.trim().slice(0, 80),
+        subtitle: `${points.slice(0, 2).join(' | ')} - Perfect for ${audience}`.slice(0, 55),
+        item_description: `<p>${product} for ${audience}.</p><ul>${points.map((p) => `<li>${p}</li>`).join('')}</ul>`,
+        item_specifics: { Brand: 'Unbranded', Type: product },
+        seo_tags: [product, ...points.slice(0, 3)],
+        forbidden_word_check: { found: [], warnings: [] },
+        disclaimer: DISCLAIMER,
+      }
+
+    default:
+      return {
+        title_options: [
+          `[${product}] ${points[0] || '핵심 장점'} 강조 ${audience} 맞춤`,
+          `${audience}를 위한 ${product} | ${points.slice(0, 2).join(' · ')}`,
+        ],
+        detail_copy: {
+          hook: `${audience}이라면, ${product} 선택 전에 이 포인트를 먼저 보세요.`,
+          body: `${points.map((p, i) => `${i + 1}. ${p}`).join(' ')} 톤 가이드는 '${tone}'를 유지해 신뢰 중심으로 작성합니다.`,
+          closing_cta: `지금 ${product} 상세 정보를 확인하고 내 상황에 맞는 옵션을 선택해보세요.`,
+        },
+        seo_tags: [product.replace(/\s+/g, ''), ...points.slice(0, 2).map((x) => x.replace(/\s+/g, ''))],
+        ad_copy: {
+          platform: platform,
+          text: `${product} | ${points[0] || '핵심 장점'} 중심 ${audience} 타깃 카피 (${tone})`,
+        },
+        forbidden_word_check: { found: [], warnings: [] },
+        disclaimer: DISCLAIMER,
+      }
+  }
+}
 
 export async function runListingCopy(args) {
   requireFields(args, ['product_name', 'selling_points', 'target_audience', 'platform', 'tone'])
@@ -50,30 +132,15 @@ export async function runListingCopy(args) {
   const points = (args.selling_points || []).map(sanitizeText).filter(Boolean)
   const forbidden = (args.forbidden_words || []).map(sanitizeText).filter(Boolean)
 
-  const fallback = {
-    title_options: [
-      `[${product}] ${points[0] || '핵심 장점'} 강조 ${audience} 맞춤`,
-      `${audience}를 위한 ${product} | ${points.slice(0, 2).join(' · ')}`,
-    ],
-    detail_copy: {
-      hook: `${audience}이라면, ${product} 선택 전에 이 포인트를 먼저 보세요.`,
-      body: `${points.map((p, i) => `${i + 1}. ${p}`).join(' ')} 톤 가이드는 '${tone}'를 유지해 신뢰 중심으로 작성합니다.`,
-      closing_cta: `지금 ${product} 상세 정보를 확인하고 내 상황에 맞는 옵션을 선택해보세요.`,
-    },
-    seo_tags: [product.replace(/\s+/g, ''), ...points.slice(0, 2).map((x) => x.replace(/\s+/g, ''))],
-    ad_copy: {
-      platform: args.platform,
-      text: `${product} | ${points[0] || '핵심 장점'} 중심 ${audience} 타깃 카피 (${tone})`,
-    },
-    forbidden_word_check: { found: [], warnings: [] },
-    disclaimer: DISCLAIMER,
-  }
+  const config = getPlatformConfig(args.platform)
+  const fallback = buildListingFallback(args.platform, { product, audience, tone, points })
+  const outputSchema = getListingOutputSchema(args.platform)
 
   const system = [
-    '너는 한국 이커머스 카피라이터다.',
-    '절대 검색량/매출/순위/전환율 등 추정 수치를 만들지 마라.',
-    '반드시 JSON object만 반환하라.',
-    '필수 키: title_options, detail_copy, seo_tags, ad_copy, forbidden_word_check, disclaimer',
+    config.listingCopyRole,
+    ...config.listingCopyRules,
+    GLOBAL_METRIC_RULE,
+    '반드시 JSON object만 반환하라. Return only a JSON object.',
     `disclaimer는 정확히 다음 문구 사용: ${DISCLAIMER}`,
   ].join('\n')
 
@@ -81,7 +148,7 @@ export async function runListingCopy(args) {
     system,
     input: args,
     fallback,
-    outputSchema: listingCopyOutputSchema,
+    outputSchema,
     toolName: listingCopyTool.name,
   })
 
