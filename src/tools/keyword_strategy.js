@@ -73,11 +73,12 @@ export async function runKeywordStrategy(args) {
   const product = sanitizeText(args.product_name)
   const category = sanitizeText(args.category)
   const audience = sanitizeText(args.target_audience)
-  const season = sanitizeText(args.season || '상시')
   const features = (args.key_features || []).map(sanitizeText).filter(Boolean)
 
   const config = getPlatformConfig(args.platform || 'all')
   const disclaimer = getDisclaimer(config.locale)
+  const defaultSeason = config.locale === 'en' ? 'evergreen' : '상시'
+  const season = sanitizeText(args.season || defaultSeason)
 
   const fallback = buildKeywordFallback({
     locale: config.locale,
