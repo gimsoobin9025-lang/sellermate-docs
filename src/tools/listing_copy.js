@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DISCLAIMER } from '../lib/disclaimer.js'
+import { getDisclaimer } from '../lib/disclaimer.js'
 import { containsForbiddenWords, noFabricatedMetricsGuard, requireFields, sanitizeText } from '../lib/validation.js'
 import { maybeEnhanceWithLlm } from '../lib/llm.js'
 import { getPlatformConfig, GLOBAL_METRIC_RULE } from '../lib/platform-prompts.js'
@@ -27,9 +27,9 @@ function getListingOutputSchema(platform) {
   switch ((platform || '').toLowerCase()) {
     case 'amazon':
       return z.object({
-        title: z.string().max(200),
+        title: z.string().max(300),
         bullet_points: z.array(z.string()).min(3).max(5),
-        product_description: z.string().max(2000),
+        product_description: z.string().max(3000),
         backend_search_terms: z.string(),
         seo_tags: z.array(z.string()),
         forbidden_word_check: z.object({
@@ -41,8 +41,8 @@ function getListingOutputSchema(platform) {
 
     case 'ebay':
       return z.object({
-        title: z.string().max(80),
-        subtitle: z.string().max(55).optional(),
+        title: z.string().max(120),
+        subtitle: z.string().max(80).optional(),
         item_description: z.string(),
         item_specifics: z.record(z.string()),
         seo_tags: z.array(z.string()),
@@ -75,7 +75,7 @@ function getListingOutputSchema(platform) {
   }
 }
 
-function buildListingFallback(platform, { product, audience, tone, points }) {
+function buildListingFallback(platform, { product, audience, tone, points, disclaimer }) {
   switch ((platform || '').toLowerCase()) {
     case 'amazon':
       return {
@@ -87,7 +87,7 @@ function buildListingFallback(platform, { product, audience, tone, points }) {
         backend_search_terms: points.map((p) => p.toLowerCase().replace(/\s+/g, ' ')).join(', '),
         seo_tags: [product, ...points.slice(0, 3)],
         forbidden_word_check: { found: [], warnings: [] },
-        disclaimer: DISCLAIMER,
+        disclaimer,
       }
 
     case 'ebay':
@@ -98,7 +98,7 @@ function buildListingFallback(platform, { product, audience, tone, points }) {
         item_specifics: { Brand: 'Unbranded', Type: product },
         seo_tags: [product, ...points.slice(0, 3)],
         forbidden_word_check: { found: [], warnings: [] },
-        disclaimer: DISCLAIMER,
+        disclaimer,
       }
 
     default:
@@ -118,7 +118,7 @@ function buildListingFallback(platform, { product, audience, tone, points }) {
           text: `${product} | ${points[0] || '핵심 장점'} 중심 ${audience} 타깃 카피 (${tone})`,
         },
         forbidden_word_check: { found: [], warnings: [] },
-        disclaimer: DISCLAIMER,
+        disclaimer,
       }
   }
 }
@@ -133,7 +133,8 @@ export async function runListingCopy(args) {
   const forbidden = (args.forbidden_words || []).map(sanitizeText).filter(Boolean)
 
   const config = getPlatformConfig(args.platform)
-  const fallback = buildListingFallback(args.platform, { product, audience, tone, points })
+  const disclaimer = getDisclaimer(config.locale)
+  const fallback = buildListingFallback(args.platform, { product, audience, tone, points, disclaimer })
   const outputSchema = getListingOutputSchema(args.platform)
 
   const system = [
@@ -141,7 +142,7 @@ export async function runListingCopy(args) {
     ...config.listingCopyRules,
     GLOBAL_METRIC_RULE,
     '반드시 JSON object만 반환하라. Return only a JSON object.',
-    `disclaimer는 정확히 다음 문구 사용: ${DISCLAIMER}`,
+    `disclaimer는 정확히 다음 문구 사용: ${disclaimer}`,
   ].join('\n')
 
   const enhanced = await maybeEnhanceWithLlm({
@@ -158,7 +159,7 @@ export async function runListingCopy(args) {
     found,
     warnings: found.map((w) => `'${w}' 대체 표현 권장`),
   }
-  enhanced.disclaimer = DISCLAIMER
+  enhanced.disclaimer = disclaimer
 
   const guard = noFabricatedMetricsGuard(JSON.stringify(enhanced))
   const cleaned = JSON.parse(guard.text)

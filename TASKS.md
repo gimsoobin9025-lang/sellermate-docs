@@ -25,3 +25,17 @@
 - [ ] 앱스토어 제출용 privacy policy 공개 URL 준비(정적 호스팅)
 - [x] `RELEASE_CHECKLIST.md` 생성 (제출 전 점검 항목)
 - [ ] 모바일/웹 크로스 테스트 케이스 10개 이상 추가
+
+- [x] 글로벌 플랫폼 확장 (Amazon, eBay)
+  - [x] platform enum에 amazon, ebay 추가
+  - [x] src/lib/platform-prompts.js 생성 (플랫폼별 프롬프트/규칙)
+  - [x] listing_copy 플랫폼별 출력 스키마 분기 (Amazon bullet points, eBay item specifics 등)
+  - [x] listing_copy fallback 플랫폼별 분기
+  - [x] keyword_strategy에 platform 필드 추가 + 프롬프트 분기
+  - [x] tool description 영문화
+  - [x] disclaimer 다국어화 (영어 + 한국어)
+  - [x] validation guard에 영어 성과지표 패턴 추가
+  - [x] 영어 guard 테스트 추가
+  - [x] npm test 통과 확인
+  - [ ] MCP 회귀 테스트 (initialize, tools/list, tools/call with amazon/ebay)
+  - [ ] Railway 배포 + 검증

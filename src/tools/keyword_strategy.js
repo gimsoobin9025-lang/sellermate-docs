@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DISCLAIMER } from '../lib/disclaimer.js'
+import { getDisclaimer } from '../lib/disclaimer.js'
 import { noFabricatedMetricsGuard, requireFields, sanitizeText } from '../lib/validation.js'
 import { maybeEnhanceWithLlm } from '../lib/llm.js'
 import { getPlatformConfig, GLOBAL_METRIC_RULE } from '../lib/platform-prompts.js'
@@ -33,6 +33,40 @@ const keywordStrategyOutputSchema = z.object({
   disclaimer: z.string(),
 })
 
+function buildKeywordFallback({ locale, product, category, audience, season, features, disclaimer }) {
+  if (locale === 'en') {
+    return {
+      main_keywords: [product.replace(/\s+/g, ''), `${category} ${product}`],
+      longtail_keywords: [
+        `${audience} ${product} recommendation`,
+        `${features[0] || product} focused ${product} comparison`,
+        `${season} ${product} buying guide`,
+      ],
+      seasonal_keywords: [`${season} ${product}`, `${season} ${category} trend`],
+      priority_ranking: [product, `${audience} ${product}`, `${features[0] || product} ${product}`],
+      strategy_summary:
+        'Prioritize clear product-name keywords for core visibility, then add intent-based long-tail variants tied to user context and buying stage.',
+      content_direction: `Lead the detail page with ${features[0] || 'a key benefit'} and add FAQ blocks that remove common pre-purchase friction.`,
+      disclaimer,
+    }
+  }
+
+  return {
+    main_keywords: [product.replace(/\s+/g, ''), `${category} ${product}`],
+    longtail_keywords: [
+      `${audience} ${product} 추천`,
+      `${features[0] || product} 중심 ${product} 비교`,
+      `${season} ${product} 코디`,
+    ],
+    seasonal_keywords: [`${season} ${product}`, `${season} ${category} 트렌드`],
+    priority_ranking: [product, `${audience} ${product}`, `${features[0] || product} ${product}`],
+    strategy_summary:
+      '메인 키워드는 상품명 중심으로 단순·명확하게, 롱테일은 고객 상황(연령/사용맥락)을 붙여 전환 의도를 높이는 방향을 권장합니다.',
+    content_direction: `상세페이지 첫 블록에서 ${features[0] || '핵심 장점'}를 강조하고, FAQ에 구매 전 불안을 해소하는 문장을 배치하세요.`,
+    disclaimer,
+  }
+}
+
 export async function runKeywordStrategy(args) {
   requireFields(args, ['product_name', 'category', 'target_audience', 'key_features'])
 
@@ -43,20 +77,17 @@ export async function runKeywordStrategy(args) {
   const features = (args.key_features || []).map(sanitizeText).filter(Boolean)
 
   const config = getPlatformConfig(args.platform || 'all')
+  const disclaimer = getDisclaimer(config.locale)
 
-  const fallback = {
-    main_keywords: [product.replace(/\s+/g, ''), `${category} ${product}`],
-    longtail_keywords: [
-      `${audience} ${product} 추천`,
-      `${features[0] || product} 중심 ${product} 비교`,
-      `${season} ${product} 코디`,
-    ],
-    seasonal_keywords: [`${season} ${product}`, `${season} ${category} 트렌드`],
-    priority_ranking: [product, `${audience} ${product}`, `${features[0] || product} ${product}`],
-    strategy_summary: '메인 키워드는 상품명 중심으로 단순·명확하게, 롱테일은 고객 상황(연령/사용맥락)을 붙여 전환 의도를 높이는 방향을 권장합니다.',
-    content_direction: `상세페이지 첫 블록에서 ${features[0] || '핵심 장점'}를 강조하고, FAQ에 구매 전 불안을 해소하는 문장을 배치하세요.`,
-    disclaimer: DISCLAIMER,
-  }
+  const fallback = buildKeywordFallback({
+    locale: config.locale,
+    product,
+    category,
+    audience,
+    season,
+    features,
+    disclaimer,
+  })
 
   const system = [
     config.keywordRole,
@@ -64,7 +95,7 @@ export async function runKeywordStrategy(args) {
     GLOBAL_METRIC_RULE,
     '반드시 JSON object만 반환하라. Return only a JSON object.',
     '필수 키: main_keywords, longtail_keywords, seasonal_keywords, priority_ranking, strategy_summary, content_direction, disclaimer',
-    `disclaimer는 정확히 다음 문구 사용: ${DISCLAIMER}`,
+    `disclaimer는 정확히 다음 문구 사용: ${disclaimer}`,
   ].join('\n')
 
   const enhanced = await maybeEnhanceWithLlm({
@@ -74,7 +105,7 @@ export async function runKeywordStrategy(args) {
     outputSchema: keywordStrategyOutputSchema,
     toolName: keywordStrategyTool.name,
   })
-  enhanced.disclaimer = DISCLAIMER
+  enhanced.disclaimer = disclaimer
 
   const guard = noFabricatedMetricsGuard(JSON.stringify(enhanced))
   const cleaned = JSON.parse(guard.text)

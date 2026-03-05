@@ -43,3 +43,19 @@ test('english generic numeric unit becomes warning only', () => {
   assert.deepEqual(out.warnings, ['soft_numeric_unit_detected'])
   assert.equal(out.text, input)
 })
+
+test('english BSR pattern is redacted', () => {
+  const input = 'This product BSR: #1234 in category.'
+  const out = noFabricatedMetricsGuard(input)
+
+  assert.equal(out.policyViolation, true)
+  assert.match(out.text, /\[수치-삭제: 성과지표 추정 금지 정책\]/)
+})
+
+test('english speculative metric is redacted', () => {
+  const input = 'estimated sales: $50,000 per month'
+  const out = noFabricatedMetricsGuard(input)
+
+  assert.equal(out.policyViolation, true)
+  assert.match(out.text, /\[수치-삭제: 성과지표 추정 금지 정책\]/)
+})
