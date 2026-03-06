@@ -135,7 +135,7 @@ export async function runTranslateListing(args) {
     translated_description: '',
     translated_selling_points: [],
     localized_keywords: [],
-    thumbnail_prompt: 'Professional product photo, clean white background, studio lighting',
+    thumbnail_prompt: 'Please generate this image: Professional product photo, clean white background, studio lighting',
     thumbnail_prompt_instruction:
       config.locale === 'ko'
         ? '아래 프롬프트를 따라 이미지를 만드세요. 위 프롬프트를 다른 GPT 채팅방(이미지 생성)이나 이미지 생성 도구(예: 나노바나나)에 그대로 붙여넣어 사용하세요.'
@@ -165,6 +165,7 @@ export async function runTranslateListing(args) {
     ' - Adjust tone, keywords, and emphasis for the target platform.',
     '3. Generate localized keywords optimized for the target platform search.',
     '4. Create a thumbnail image prompt (in English) describing the product appearance for DALL-E.',
+    ' - The thumbnail_prompt must start with: "Please generate this image:".',
     '5. Provide a compliance checklist for the target platform.',
     ` Available checklist items: ${JSON.stringify(config.complianceChecklist || [])}`,
     '6. In translation_notes, explain any significant adaptations or intentional deviations from the original.',

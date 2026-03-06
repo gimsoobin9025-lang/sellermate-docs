@@ -109,7 +109,7 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
 
   const common = {
     detail_page_copy: detailPageCopy,
-    thumbnail_prompt: `Studio e-commerce product photo of ${product}, single product centered and occupying about 85% of frame, pure white background, bright softbox lighting, realistic texture and true-to-product shape/colors, no people, no hands, no extra props, no text/logo/watermark, Korean shopping mall thumbnail style, 4:5 vertical ratio, high resolution`,
+    thumbnail_prompt: `Please generate this image: Studio e-commerce product photo of ${product}, single product centered and occupying about 85% of frame, pure white background, bright softbox lighting, realistic texture and true-to-product shape/colors, no people, no hands, no extra props, no text/logo/watermark, Korean shopping mall thumbnail style, 4:5 vertical ratio, high resolution`,
     thumbnail_prompt_instruction:
       config.locale === 'ko'
         ? '아래 프롬프트를 따라 이미지를 만드세요. 위 프롬프트를 다른 GPT 채팅방(이미지 생성)이나 이미지 생성 도구(예: 나노바나나)에 그대로 붙여넣어 사용하세요.'
@@ -200,6 +200,7 @@ export async function runListingCopy(args) {
     GLOBAL_METRIC_RULE,
     'detail_page_copy: 상세페이지에 바로 사용할 수 있는 긴 카피를 작성하라. 구매자의 불안을 해소하고, 핵심 셀링포인트를 시각적으로 구분되게 구성하라.',
     'thumbnail_prompt: 이 상품의 메인 썸네일 이미지를 생성하기 위한 DALL-E 프롬프트를 작성하라. 프롬프트는 영어로 작성하라.',
+    'thumbnail_prompt는 반드시 이 문장으로 시작하라: "Please generate this image:"',
     'thumbnail_prompt는 CTR 중심 썸네일 기준으로 작성: single product centered, product fills 80~90% frame, clean white background, bright commercial lighting, sharp focus, minimal composition, 4:5 ratio, high resolution.',
     '기본값으로 사람/모델/손/불필요 소품/배경 연출을 넣지 마라. (사용자가 명시적으로 요청한 경우만 허용)',
     '상품 정합성이 최우선: image_analysis, product_details, must_include_images에 나온 제품 형태/색상/핵심 파츠를 유지하고 다른 제품처럼 바꾸지 마라.',
