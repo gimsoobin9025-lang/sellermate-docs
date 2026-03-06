@@ -111,7 +111,7 @@ export async function runTranslateListing(args) {
     if (fetched) {
       sourceContent += `[URL content]\n${fetched}\n\n`
     } else {
-      sourceContent += `[URL fetch failed: ${args.source_url} — 직접 텍스트/이미지를 제공해주세요]\n\n`
+      sourceContent += `[URL fetch failed: ${args.source_url} — 일부 쇼핑몰은 자동 접근을 차단합니다. 상품 페이지 텍스트를 복사하거나 상세설명 이미지를 ChatGPT에 업로드해 주세요.]\n\n`
     }
   }
 
@@ -141,7 +141,7 @@ export async function runTranslateListing(args) {
         ? '위 프롬프트를 ChatGPT 이미지 생성에 붙여넣으면 썸네일 이미지를 만들 수 있습니다.'
         : 'Paste the above prompt into ChatGPT image generation to create a thumbnail image.',
     compliance_checklist: config.complianceChecklist || [],
-    translation_notes: ['소스 분석 실패 — 텍스트 또는 이미지를 직접 제공해주세요.'],
+    translation_notes: ['자동 URL 접근이 제한되었을 수 있습니다. 상품 텍스트를 복사하거나 상세설명 이미지를 ChatGPT에 업로드해 주세요.'],
     comparison: {
       original_title: '',
       translated_title: '',
