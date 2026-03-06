@@ -211,17 +211,35 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
           ],
     detail_page_blueprint: {
       recommended_sections: [
-        { type: 'hero', description: `${product} 핵심 이미지와 첫인상 카피` },
-        { type: 'empathy', description: `${audience}의 불편/니즈 공감 섹션` },
-        { type: 'features', description: points.slice(0, 3).join(', ') || '핵심 기능 설명' },
-        { type: 'usage', description: '사용 장면과 활용 팁' },
-        { type: 'size_guide', description: '사이즈·스펙 가이드' },
-        { type: 'closing', description: '신뢰 요소 + 구매 CTA' },
+        {
+          type: 'hero',
+          description: config.locale === 'ko' ? '메인 캐치카피 + 대표 이미지' : 'Hero: main catch copy + hero image',
+        },
+        {
+          type: 'empathy',
+          description: config.locale === 'ko' ? '고객 공감 도입부' : 'Customer empathy introduction',
+        },
+        {
+          type: 'features',
+          description: config.locale === 'ko' ? '핵심 특징 3~5개' : '3-5 key features',
+        },
+        {
+          type: 'material',
+          description: config.locale === 'ko' ? '소재/성분 설명' : 'Material/ingredient details',
+        },
+        {
+          type: 'usage',
+          description: config.locale === 'ko' ? '이런 분께 추천 / 사용 장면' : 'Recommended for / usage scenes',
+        },
+        {
+          type: 'closing',
+          description: config.locale === 'ko' ? '구매 유도 마무리' : 'Purchase CTA closing',
+        },
       ],
       ai_notes:
         config.locale === 'ko'
-          ? `${product}는 ${audience}에게 ${points[0] || '핵심 장점'} 중심 설계가 유효합니다. 톤(${tone})을 유지하면서 정보 블록 간 여백을 넉넉히 두는 구성을 권장합니다.`
-          : `${product} should lead with ${points[0] || 'a key benefit'} for ${audience}. Keep the ${tone} tone and use clean section spacing for readability.`,
+          ? `${product} 상품의 핵심 셀링포인트는 ${points.slice(0, 2).join(', ')}입니다. ${audience} 타겟에 맞는 톤으로 구성을 권장합니다.`
+          : `Key selling points for ${product}: ${points.slice(0, 2).join(', ')}. Recommend structuring for ${audience} target.`,
     },
   }
 
