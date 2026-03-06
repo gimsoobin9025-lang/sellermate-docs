@@ -106,9 +106,7 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
 
   const common = {
     detail_page_copy: detailPageCopy,
-    thumbnail_prompt: `Professional e-commerce product photo of ${product}, clean white background, studio lighting, showing key features: ${points
-      .slice(0, 2)
-      .join(', ')}, high resolution, commercial photography style`,
+    thumbnail_prompt: `Studio e-commerce product photo of ${product}, single product centered and occupying about 85% of frame, pure white background, bright softbox lighting, realistic texture and true-to-product shape/colors, no people, no hands, no extra props, no text/logo/watermark, Korean shopping mall thumbnail style, 4:5 vertical ratio, high resolution`,
     thumbnail_prompt_instruction:
       config.locale === 'ko'
         ? '위 프롬프트를 ChatGPT 이미지 생성에 붙여넣으면 썸네일 이미지를 만들 수 있습니다.'
@@ -194,13 +192,17 @@ export async function runListingCopy(args) {
     ...config.listingCopyRules,
     GLOBAL_METRIC_RULE,
     'detail_page_copy: 상세페이지에 바로 사용할 수 있는 긴 카피를 작성하라. 구매자의 불안을 해소하고, 핵심 셀링포인트를 시각적으로 구분되게 구성하라.',
-    'thumbnail_prompt: 이 상품의 메인 썸네일 이미지를 생성하기 위한 DALL-E 프롬프트를 작성하라. 상품의 외형, 색상, 사용 장면을 구체적으로 묘사하라. 프롬프트는 영어로 작성하라.',
+    'thumbnail_prompt: 이 상품의 메인 썸네일 이미지를 생성하기 위한 DALL-E 프롬프트를 작성하라. 프롬프트는 영어로 작성하라.',
+    'thumbnail_prompt는 CTR 중심 썸네일 기준으로 작성: single product centered, product fills 80~90% frame, clean white background, bright commercial lighting, sharp focus, minimal composition, 4:5 ratio, high resolution.',
+    '기본값으로 사람/모델/손/불필요 소품/배경 연출을 넣지 마라. (사용자가 명시적으로 요청한 경우만 허용)',
+    '상품 정합성이 최우선: image_analysis, product_details, must_include_images에 나온 제품 형태/색상/핵심 파츠를 유지하고 다른 제품처럼 바꾸지 마라.',
+    '브랜드명, 텍스트 오버레이, 워터마크, 타사 로고는 thumbnail_prompt에 넣지 마라.',
     `thumbnail_prompt_instruction: 항상 다음 문구를 사용: "${thumbnailInstruction}"`,
     `compliance_checklist: 다음 항목 중 이 상품에 해당하는 것을 선별하여 포함하라: ${JSON.stringify(config.complianceChecklist || [])}`,
     'competitive_edge: 이 카테고리에서 경쟁 상품들이 흔히 강조하는 포인트를 분석하고, 이 상품만의 차별화 전략을 1~2문장으로 제안하라.',
     'image_analysis 필드가 제공된 경우, 해당 텍스트를 상품 외형/디자인 정보로 활용하여 더 정확한 카피와 썸네일 프롬프트를 작성하라.',
     'is_imported가 true이면 수입 상품 관련 필수 표기사항을 compliance_checklist에 반드시 포함하라.',
-    'thumbnail_style이 제공되면 해당 스타일을 썸네일 프롬프트에 반영하라.(예: 귀여운 느낌이면 pastel colors, rounded edges, playful composition 등으로 프롬프트를 구성)',
+    'thumbnail_style이 제공되면 해당 스타일을 썸네일 프롬프트에 반영하라. 단, 스타일보다 제품 식별성/형태 보존을 우선하라.',
     'description_tone이 제공되면 detail_page_copy의 톤을 해당 지시에 맞춰 조정하라.',
     'must_include_images가 제공되면 상세페이지 구성에서 해당 이미지들이 어디에 배치되면 좋을지 detail_page_copy 안에 [이미지 삽입 위치: 설명] 형태로 표시하라.',
     '반드시 JSON object만 반환하라. Return only a JSON object.',
