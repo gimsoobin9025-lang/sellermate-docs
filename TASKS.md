@@ -60,5 +60,5 @@
   - [x] server.js TOOL_REGISTRY 등록
   - [x] platform-prompts.js에 complianceChecklist 추가 (전 플랫폼)
   - [x] npm test 통과 확인
-  - [ ] MCP 회귀 테스트 (initialize, tools/list, tools/call)
+  - [x] MCP 회귀 테스트 (initialize, tools/list, tools/call)
   - [ ] Railway 배포 + 검증
