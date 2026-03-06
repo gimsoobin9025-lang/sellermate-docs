@@ -1,14 +1,18 @@
 # TASKS
 
-- [ ] v1.2.0 기능 확장
-  - [x] listing_copy 출력에 questions_for_seller 추가
-  - [x] listing_copy 출력에 detail_page_blueprint 추가
-  - [x] 이미지 프롬프트 UX 개선(첫 줄 사용 안내)
-  - [x] detail_page_generate 신규 tool 추가
-  - [x] 플랫폼별 HTML 템플릿 설정 추가
+- [ ] v1.2.0 HTML 상세페이지 생성
+  - [x] listing_copy에 questions_for_seller 출력 추가
+  - [x] listing_copy에 detail_page_blueprint 출력 추가
+  - [x] detail_page_generate tool 신규 생성
+  - [x] 분위기별 색상/스타일 시스템 (professional/warm/trendy/simple)
+  - [x] 플랫폼별 페이지 폭 대응
+  - [x] 섹션 수 조절 (short/medium/detailed)
+  - [x] 이미지 플레이스홀더 + 배치 가이드
+  - [x] fallback HTML 빌더
   - [x] server.js TOOL_REGISTRY 등록
-  - [x] package.json version 1.2.0 반영
   - [x] npm test 통과 확인
+  - [ ] MCP 회귀 테스트
+  - [ ] Railway 배포 + 검증
 
 - [x] MCP SDK(@modelcontextprotocol/sdk) 기반 transport 전환
 - [x] tool 응답 structuredContent + content 동시 반환
