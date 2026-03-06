@@ -112,8 +112,8 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
     thumbnail_prompt: `Studio e-commerce product photo of ${product}, single product centered and occupying about 85% of frame, pure white background, bright softbox lighting, realistic texture and true-to-product shape/colors, no people, no hands, no extra props, no text/logo/watermark, Korean shopping mall thumbnail style, 4:5 vertical ratio, high resolution`,
     thumbnail_prompt_instruction:
       config.locale === 'ko'
-        ? '위 프롬프트를 다른 GPT 채팅방(이미지 생성)이나 이미지 생성 도구(예: 나노바나나)에 그대로 붙여넣어 사용하세요.'
-        : 'Paste this prompt into another GPT image-generation chat or an image tool (e.g., Nanobanana) to create the thumbnail.',
+        ? '아래 프롬프트를 따라 이미지를 만드세요. 위 프롬프트를 다른 GPT 채팅방(이미지 생성)이나 이미지 생성 도구(예: 나노바나나)에 그대로 붙여넣어 사용하세요.'
+        : 'Create an image by following the prompt below. Paste this prompt into another GPT image-generation chat or an image tool (e.g., Nanobanana).',
     image_upload_instruction:
       config.locale === 'ko'
         ? '복사해서 고객에게 전달하세요: "상세설명 프롬프트를 ChatGPT에 등록할 때 판매상품의 실사 이미지도 함께 업로드해야 제품 정합성이 높아집니다. 상품 등록 시 원본 상품 이미지를 함께 업로드하고, 아래 썸네일 프롬프트로 생성한 대표 이미지를 메인 썸네일로 설정해 주세요."'

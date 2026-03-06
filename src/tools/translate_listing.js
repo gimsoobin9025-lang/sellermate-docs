@@ -138,8 +138,8 @@ export async function runTranslateListing(args) {
     thumbnail_prompt: 'Professional product photo, clean white background, studio lighting',
     thumbnail_prompt_instruction:
       config.locale === 'ko'
-        ? '위 프롬프트를 다른 GPT 채팅방(이미지 생성)이나 이미지 생성 도구(예: 나노바나나)에 그대로 붙여넣어 사용하세요.'
-        : 'Paste this prompt into another GPT image-generation chat or an image tool (e.g., Nanobanana) to create the thumbnail.',
+        ? '아래 프롬프트를 따라 이미지를 만드세요. 위 프롬프트를 다른 GPT 채팅방(이미지 생성)이나 이미지 생성 도구(예: 나노바나나)에 그대로 붙여넣어 사용하세요.'
+        : 'Create an image by following the prompt below. Paste this prompt into another GPT image-generation chat or an image tool (e.g., Nanobanana).',
     compliance_checklist: config.complianceChecklist || [],
     translation_notes: ['자동 URL 접근이 제한되었을 수 있습니다. 상품 텍스트를 복사하거나 상세설명 이미지를 ChatGPT에 업로드해 주세요.'],
     comparison: {
