@@ -52,7 +52,7 @@ async function tryFetchUrl(url) {
 
     const r = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; SellerMate/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; Mozi/1.0)',
         Accept: 'text/html',
         'Accept-Language': 'en,ko,zh,ja',
       },

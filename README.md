@@ -1,6 +1,6 @@
-# SellerMate MCP
+# Mozi MCP
 
-SellerMate는 이커머스 카피/키워드 전략 생성을 위한 MCP 서버입니다.
+Mozi는 이커머스 셀러를 위한 AI 에이전트 MCP 서버입니다.
 
 ## 현재 상태 요약
 - MCP 서버

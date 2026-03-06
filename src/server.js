@@ -24,7 +24,7 @@ const TOOL_REGISTRY = [
 
 function createMcpServer() {
   const server = new McpServer({
-    name: 'sellermate-mcp',
+    name: 'mozi-mcp',
     version: APP_VERSION,
   })
 
@@ -127,7 +127,7 @@ app.get('/', (_req, res) => {
 })
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'sellermate-mcp', version: APP_VERSION })
+  res.json({ ok: true, service: 'mozi-mcp', version: APP_VERSION })
 })
 
 app.all('/mcp', async (req, res) => {
@@ -171,10 +171,10 @@ const httpServer = HOST ? app.listen(PORT, HOST, onListen) : app.listen(PORT, on
 
 function onListen() {
   const logHost = HOST || 'localhost'
-  console.log(`[sellermate] v${APP_VERSION} http://${logHost}:${PORT}`)
-  console.log(`[sellermate] MCP endpoint: http://${logHost}:${PORT}/mcp`)
-  console.log(`[sellermate] privacy policy: http://${logHost}:${PORT}/docs/privacy-policy.html`)
-  console.log('[sellermate] note: Streamable HTTP session internals are SDK-managed; app-level request/runtime logs are enabled for leak diagnosis')
+  console.log(`[mozi] v${APP_VERSION} http://${logHost}:${PORT}`)
+  console.log(`[mozi] MCP endpoint: http://${logHost}:${PORT}/mcp`)
+  console.log(`[mozi] privacy policy: http://${logHost}:${PORT}/docs/privacy-policy.html`)
+  console.log('[mozi] note: Streamable HTTP session internals are SDK-managed; app-level request/runtime logs are enabled for leak diagnosis')
   if (RUNTIME_RECYCLE_MS > 0) {
     recycleTimer = setInterval(() => {
       maybeRecycleRuntime('interval').catch((e) => console.error('[mcp-runtime] interval recycle check failed', e?.name || e))
