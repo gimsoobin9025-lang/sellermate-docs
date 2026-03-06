@@ -40,6 +40,8 @@ function getListingOutputSchema(platform) {
         product_description: z.string().max(3000),
         backend_search_terms: z.string(),
         detail_page_copy: z.string(),
+        detail_page_image_prompts: z.array(z.string()).min(4).max(12),
+        detail_page_image_prompt_instruction: z.string(),
         thumbnail_prompt: z.string(),
         thumbnail_prompt_instruction: z.string(),
         image_upload_instruction: z.string(),
@@ -60,6 +62,8 @@ function getListingOutputSchema(platform) {
         item_description: z.string(),
         item_specifics: z.record(z.string()),
         detail_page_copy: z.string(),
+        detail_page_image_prompts: z.array(z.string()).min(4).max(12),
+        detail_page_image_prompt_instruction: z.string(),
         thumbnail_prompt: z.string(),
         thumbnail_prompt_instruction: z.string(),
         image_upload_instruction: z.string(),
@@ -82,6 +86,8 @@ function getListingOutputSchema(platform) {
           closing_cta: z.string(),
         }),
         detail_page_copy: z.string(),
+        detail_page_image_prompts: z.array(z.string()).min(4).max(12),
+        detail_page_image_prompt_instruction: z.string(),
         thumbnail_prompt: z.string(),
         thumbnail_prompt_instruction: z.string(),
         image_upload_instruction: z.string(),
@@ -109,6 +115,18 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
 
   const common = {
     detail_page_copy: detailPageCopy,
+    detail_page_image_prompts: [
+      `Please generate this image: Long vertical ecommerce detail image section 1 (intro) for ${product}, clean Korean smartstore style, clear headline area, product hero emphasized, high readability layout, no watermark.`,
+      `Please generate this image: Long vertical ecommerce detail image section 2 (key benefits) for ${product}, visually explain: ${points[0] || 'key benefit'}, ${points[1] || 'core feature'}, clean white background, Korean shopping detail page style.`,
+      `Please generate this image: Long vertical ecommerce detail image section 3 (materials/spec) for ${product}, show realistic texture and components, infographic-friendly composition, no people unless product requires model shot.`,
+      `Please generate this image: Long vertical ecommerce detail image section 4 (usage scene) for ${product}, practical daily-use context for ${audience}, clean lifestyle composition, product remains the main focus.`,
+      `Please generate this image: Long vertical ecommerce detail image section 5 (size/spec guide) for ${product}, clear measurement/spec visual hierarchy, ecommerce infographic style.`,
+      `Please generate this image: Long vertical ecommerce detail image section 6 (trust/closing CTA) for ${product}, reassuring tone, purchase-driving composition, clean premium ecommerce style.`,
+    ],
+    detail_page_image_prompt_instruction:
+      config.locale === 'ko'
+        ? '🚨 중요: 모지 채팅방을 나가서 이미지 생성 가능한 GPT 채팅방 또는 나노바나나로 이동하세요. 아래 상세 이미지 프롬프트를 순서대로 붙여넣고, 원본 상품사진도 반드시 함께 업로드해 길쭉한 상세페이지 섹션 이미지를 생성하세요.'
+        : 'Important: Move to an image-capable GPT chat or image tool. Paste the detail image prompts in order and upload original product photos together to generate long vertical detail-page section images.',
     thumbnail_prompt: `Please generate this image: Studio e-commerce product photo of ${product}, single product centered and occupying about 85% of frame, pure white background, bright softbox lighting, realistic texture and true-to-product shape/colors, no people, no hands, no extra props, no text/logo/watermark, Korean shopping mall thumbnail style, 4:5 vertical ratio, high resolution`,
     thumbnail_prompt_instruction:
       config.locale === 'ko'
@@ -199,6 +217,8 @@ export async function runListingCopy(args) {
     ...config.listingCopyRules,
     GLOBAL_METRIC_RULE,
     'detail_page_copy: 상세페이지에 바로 사용할 수 있는 긴 카피를 작성하라. 구매자의 불안을 해소하고, 핵심 셀링포인트를 시각적으로 구분되게 구성하라.',
+    'detail_page_image_prompts: 한국 온라인 쇼핑몰 상세페이지용 길쭉한(세로형) 섹션 이미지 프롬프트를 4~12개 작성하라. 각 프롬프트는 반드시 "Please generate this image:"로 시작하고, 섹션별 역할(인트로/핵심특징/소재·스펙/사용장면/사이즈·가이드/마무리CTA)을 반영하라.',
+    'detail_page_image_prompt_instruction: 사용자가 모지 채팅방 밖(일반 GPT 이미지 채팅/나노바나나)에서 원본 상품사진과 함께 위 프롬프트들을 순서대로 사용하도록 안내하는 문장을 작성하라.',
     'thumbnail_prompt: 이 상품의 메인 썸네일 이미지를 생성하기 위한 DALL-E 프롬프트를 작성하라. 프롬프트는 영어로 작성하라.',
     'thumbnail_prompt는 반드시 이 문장으로 시작하라: "Please generate this image:"',
     'thumbnail_prompt는 CTR 중심 썸네일 기준으로 작성: single product centered, product fills 80~90% frame, clean white background, bright commercial lighting, sharp focus, minimal composition, 4:5 ratio, high resolution.',
