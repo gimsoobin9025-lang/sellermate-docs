@@ -8,6 +8,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { listingCopyTool, runListingCopy } from './tools/listing_copy.js'
 import { keywordStrategyTool, runKeywordStrategy } from './tools/keyword_strategy.js'
 import { translateListingTool, runTranslateListing } from './tools/translate_listing.js'
+import { detailPageGenerateTool, runDetailPageGenerate } from './tools/detail_page_generate.js'
 
 const PORT = Number(process.env.PORT || 3000)
 const HOST = process.env.HOST?.trim()
@@ -20,6 +21,7 @@ const TOOL_REGISTRY = [
   { def: listingCopyTool, run: runListingCopy },
   { def: keywordStrategyTool, run: runKeywordStrategy },
   { def: translateListingTool, run: runTranslateListing },
+  { def: detailPageGenerateTool, run: runDetailPageGenerate },
 ]
 
 function createMcpServer() {

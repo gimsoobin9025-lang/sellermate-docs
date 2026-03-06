@@ -133,3 +133,36 @@ export function getPlatformConfig(platform = 'all') {
   if (key === 'all') return DEFAULT_CONFIG
   return PLATFORM_CONFIGS[key] || DEFAULT_CONFIG
 }
+
+export const DETAIL_PAGE_HTML_CONFIGS = {
+  smartstore: {
+    enabled: true,
+    platformLabel: '네이버 스마트스토어',
+    containerWidth: '860px',
+  },
+  coupang: {
+    enabled: true,
+    platformLabel: '쿠팡',
+    containerWidth: '860px',
+  },
+  '11st': {
+    enabled: true,
+    platformLabel: '11번가',
+    containerWidth: '860px',
+  },
+  amazon: {
+    enabled: false,
+    platformLabel: 'Amazon',
+    containerWidth: '860px',
+  },
+  ebay: {
+    enabled: false,
+    platformLabel: 'eBay',
+    containerWidth: '860px',
+  },
+}
+
+export function getDetailPageHtmlConfig(platform = 'smartstore') {
+  const key = String(platform || 'smartstore').toLowerCase()
+  return DETAIL_PAGE_HTML_CONFIGS[key] || DETAIL_PAGE_HTML_CONFIGS.smartstore
+}

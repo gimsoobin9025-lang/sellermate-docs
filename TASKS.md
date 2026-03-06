@@ -1,5 +1,15 @@
 # TASKS
 
+- [ ] v1.2.0 기능 확장
+  - [x] listing_copy 출력에 questions_for_seller 추가
+  - [x] listing_copy 출력에 detail_page_blueprint 추가
+  - [x] 이미지 프롬프트 UX 개선(첫 줄 사용 안내)
+  - [x] detail_page_generate 신규 tool 추가
+  - [x] 플랫폼별 HTML 템플릿 설정 추가
+  - [x] server.js TOOL_REGISTRY 등록
+  - [x] package.json version 1.2.0 반영
+  - [x] npm test 통과 확인
+
 - [x] MCP SDK(@modelcontextprotocol/sdk) 기반 transport 전환
 - [x] tool 응답 structuredContent + content 동시 반환
 - [x] Tool input schema 단일 소스로 통합 (tools 모듈 기준)
