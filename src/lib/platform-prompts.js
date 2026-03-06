@@ -16,6 +16,13 @@ export const PLATFORM_CONFIGS = {
       '카테고리 키워드와 속성 키워드를 구분하라.',
     ],
     outputLanguage: 'ko',
+    complianceChecklist: [
+      '상품명에 허위/과장 표현 금지 (네이버 쇼핑 정책)',
+      '수입 상품: 수입자명, 제조국, KC인증번호 표기 필수',
+      '식품: 유통기한, 영양성분, 원재료 표기 필수',
+      '화장품: 전성분, 사용기한, 제조판매업자 표기 필수',
+      '의류: 소재(혼용률), 세탁방법, 제조국 표기 필수',
+    ],
   },
   coupang: {
     locale: 'ko',
@@ -28,6 +35,14 @@ export const PLATFORM_CONFIGS = {
     keywordRole: '너는 쿠팡 SEO 전략가다.',
     keywordRules: ['쿠팡 검색 자동완성 및 연관 키워드 패턴을 고려하라.'],
     outputLanguage: 'ko',
+    complianceChecklist: [
+      '상품명 100자 이내 (쿠팡 정책)',
+      '로켓배송 상품: 바코드/EAN 필수',
+      '수입 상품: 수입자명, 제조국, KC인증번호 표기 필수',
+      '식품: 품목보고번호, 유통기한, 보관방법 표기 필수',
+      '화장품: 화장품제조판매업 등록번호 표기 필수',
+      '리뷰에 허위 내용 유도 금지 (공정거래법)',
+    ],
   },
   '11st': {
     locale: 'ko',
@@ -36,6 +51,11 @@ export const PLATFORM_CONFIGS = {
     keywordRole: '너는 11번가 SEO 전략가다.',
     keywordRules: [],
     outputLanguage: 'ko',
+    complianceChecklist: [
+      '11번가 상품명 가이드라인 준수',
+      '수입 상품: 수입자명, 제조국 표기 필수',
+      '전자제품: KC인증 정보 필수',
+    ],
   },
   instagram: {
     locale: 'ko',
@@ -44,6 +64,10 @@ export const PLATFORM_CONFIGS = {
     keywordRole: '너는 인스타그램 커머스 마케팅 전략가다.',
     keywordRules: ['해시태그 전략 중심으로 키워드를 제안하라.'],
     outputLanguage: 'ko',
+    complianceChecklist: [
+      '광고 게시물: #광고 #협찬 해시태그 필수 (공정거래법)',
+      '건강기능식품 과대광고 금지',
+    ],
   },
   amazon: {
     locale: 'en',
@@ -64,6 +88,14 @@ export const PLATFORM_CONFIGS = {
       'All output must be in English.',
     ],
     outputLanguage: 'en',
+    complianceChecklist: [
+      'Title must not contain promotional phrases (sale, discount, free shipping)',
+      'Images: main image must be on pure white background (RGB 255,255,255)',
+      'Restricted categories may require ungating approval',
+      'Supplements/food: FDA compliance and proper labeling required',
+      'Imported products: Country of Origin must be specified',
+      'No competitor brand names or ASINs in listing content',
+    ],
   },
   ebay: {
     locale: 'en',
@@ -84,6 +116,13 @@ export const PLATFORM_CONFIGS = {
       'All output must be in English.',
     ],
     outputLanguage: 'en',
+    complianceChecklist: [
+      'Title max 80 characters — no keyword stuffing',
+      'Item Specifics: fill all required fields for your category',
+      'Used/refurbished items: accurately describe condition',
+      'VeRO policy: no counterfeit or trademark-infringing listings',
+      'Imported products: declare Country/Region of Manufacture',
+    ],
   },
 }
 

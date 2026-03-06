@@ -39,3 +39,26 @@
   - [x] npm test 통과 확인
   - [ ] MCP 회귀 테스트 (initialize, tools/list, tools/call with amazon/ebay)
   - [ ] Railway 배포 + 검증
+
+- [ ] v1.1.0 기능 확장
+  - [x] listing_copy 올인원 확장
+  - [x] inputSchema에 product_details, is_imported, origin_country, image_analysis 추가
+  - [x] inputSchema에 thumbnail_style, description_tone, must_include_images 추가
+  - [x] 출력에 detail_page_copy, thumbnail_prompt, thumbnail_prompt_instruction 추가
+  - [x] 출력에 compliance_checklist 추가 (플랫폼별 자동 선별)
+  - [x] 출력에 competitive_edge 추가 (경쟁 차별화 코멘트)
+  - [x] 시스템 프롬프트 확장 (상세설명/썸네일/체크리스트/차별화 지시)
+  - [x] 시스템 프롬프트 확장 (thumbnail_style, description_tone, must_include_images 반영)
+  - [x] 모든 플랫폼 fallback에 새 필드 추가
+  - [x] translate_listing 신규 tool
+  - [x] src/tools/translate_listing.js 생성
+  - [x] URL fetch 시도 + 실패 시 텍스트/이미지 fallback
+  - [x] 원문 vs 번역 비교(comparison) 출력
+  - [x] translation_notes (의역/변경 설명) 출력
+  - [x] compliance_checklist 포함
+  - [x] thumbnail_prompt 포함
+  - [x] server.js TOOL_REGISTRY 등록
+  - [x] platform-prompts.js에 complianceChecklist 추가 (전 플랫폼)
+  - [x] npm test 통과 확인
+  - [ ] MCP 회귀 테스트 (initialize, tools/list, tools/call)
+  - [ ] Railway 배포 + 검증

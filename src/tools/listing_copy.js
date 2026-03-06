@@ -7,7 +7,8 @@ import { getPlatformConfig, GLOBAL_METRIC_RULE } from '../lib/platform-prompts.j
 export const listingCopyTool = {
   name: 'listing_copy',
   title: 'Listing Copy Generator',
-  description: 'Generate optimized listing copy for e-commerce platforms (Amazon, eBay, Coupang, SmartStore, etc.)',
+  description:
+    'All-in-one e-commerce listing generator. Provide product info and optionally upload product photos for analysis. You can specify thumbnail style (e.g. cute, minimal, luxury), description tone (e.g. professional, friendly), and must-include images. Outputs: listing copy, detail page description with image placement guides, thumbnail prompt, compliance checklist, and competitive tips.',
   annotations: {
     readOnlyHint: true,
     openWorldHint: false,
@@ -20,6 +21,13 @@ export const listingCopyTool = {
     platform: z.enum(['amazon', 'ebay', 'smartstore', 'coupang', '11st', 'instagram', 'all']),
     tone: z.string(),
     forbidden_words: z.array(z.string()).optional(),
+    product_details: z.string().optional(),
+    is_imported: z.boolean().optional(),
+    origin_country: z.string().optional(),
+    image_analysis: z.string().optional(),
+    thumbnail_style: z.string().optional(),
+    description_tone: z.string().optional(),
+    must_include_images: z.array(z.string()).optional(),
   },
 }
 
@@ -31,6 +39,11 @@ function getListingOutputSchema(platform) {
         bullet_points: z.array(z.string()).min(3).max(5),
         product_description: z.string().max(3000),
         backend_search_terms: z.string(),
+        detail_page_copy: z.string(),
+        thumbnail_prompt: z.string(),
+        thumbnail_prompt_instruction: z.string(),
+        compliance_checklist: z.array(z.string()),
+        competitive_edge: z.string(),
         seo_tags: z.array(z.string()),
         forbidden_word_check: z.object({
           found: z.array(z.string()),
@@ -45,6 +58,11 @@ function getListingOutputSchema(platform) {
         subtitle: z.string().max(80).optional(),
         item_description: z.string(),
         item_specifics: z.record(z.string()),
+        detail_page_copy: z.string(),
+        thumbnail_prompt: z.string(),
+        thumbnail_prompt_instruction: z.string(),
+        compliance_checklist: z.array(z.string()),
+        competitive_edge: z.string(),
         seo_tags: z.array(z.string()),
         forbidden_word_check: z.object({
           found: z.array(z.string()),
@@ -61,6 +79,11 @@ function getListingOutputSchema(platform) {
           body: z.string(),
           closing_cta: z.string(),
         }),
+        detail_page_copy: z.string(),
+        thumbnail_prompt: z.string(),
+        thumbnail_prompt_instruction: z.string(),
+        compliance_checklist: z.array(z.string()),
+        competitive_edge: z.string(),
         seo_tags: z.array(z.string()),
         ad_copy: z.object({
           platform: z.string(),
@@ -75,7 +98,28 @@ function getListingOutputSchema(platform) {
   }
 }
 
-function buildListingFallback(platform, { product, audience, tone, points, disclaimer }) {
+function buildListingFallback(platform, { product, audience, tone, points, disclaimer, config }) {
+  const detailPageCopy =
+    config.locale === 'ko'
+      ? `${product}의 핵심 특장점을 확인하세요. ${points.join(', ')}. ${audience}에게 최적화된 상품입니다.`
+      : `Discover the key features of ${product}: ${points.join(', ')}. Optimized for ${audience}.`
+
+  const common = {
+    detail_page_copy: detailPageCopy,
+    thumbnail_prompt: `Professional e-commerce product photo of ${product}, clean white background, studio lighting, showing key features: ${points
+      .slice(0, 2)
+      .join(', ')}, high resolution, commercial photography style`,
+    thumbnail_prompt_instruction:
+      config.locale === 'ko'
+        ? '위 프롬프트를 ChatGPT 이미지 생성에 붙여넣으면 썸네일 이미지를 만들 수 있습니다.'
+        : 'Paste the above prompt into ChatGPT image generation to create a thumbnail image.',
+    compliance_checklist: config.complianceChecklist || [],
+    competitive_edge:
+      config.locale === 'ko'
+        ? `이 카테고리에서 ${points[0] || '핵심 장점'}을 중심으로 차별화하는 전략을 권장합니다.`
+        : `Consider differentiating on ${points[0] || 'a key feature'} in this product category.`,
+  }
+
   switch ((platform || '').toLowerCase()) {
     case 'amazon':
       return {
@@ -88,6 +132,7 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
         seo_tags: [product, ...points.slice(0, 3)],
         forbidden_word_check: { found: [], warnings: [] },
         disclaimer,
+        ...common,
       }
 
     case 'ebay':
@@ -99,6 +144,7 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
         seo_tags: [product, ...points.slice(0, 3)],
         forbidden_word_check: { found: [], warnings: [] },
         disclaimer,
+        ...common,
       }
 
     default:
@@ -119,6 +165,7 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
         },
         forbidden_word_check: { found: [], warnings: [] },
         disclaimer,
+        ...common,
       }
   }
 }
@@ -134,13 +181,28 @@ export async function runListingCopy(args) {
 
   const config = getPlatformConfig(args.platform)
   const disclaimer = getDisclaimer(config.locale)
-  const fallback = buildListingFallback(args.platform, { product, audience, tone, points, disclaimer })
+  const fallback = buildListingFallback(args.platform, { product, audience, tone, points, disclaimer, config })
   const outputSchema = getListingOutputSchema(args.platform)
+
+  const thumbnailInstruction =
+    config.locale === 'ko'
+      ? '위 프롬프트를 ChatGPT 이미지 생성에 붙여넣으면 썸네일 이미지를 만들 수 있습니다.'
+      : 'Paste the above prompt into ChatGPT image generation to create a thumbnail image.'
 
   const system = [
     config.listingCopyRole,
     ...config.listingCopyRules,
     GLOBAL_METRIC_RULE,
+    'detail_page_copy: 상세페이지에 바로 사용할 수 있는 긴 카피를 작성하라. 구매자의 불안을 해소하고, 핵심 셀링포인트를 시각적으로 구분되게 구성하라.',
+    'thumbnail_prompt: 이 상품의 메인 썸네일 이미지를 생성하기 위한 DALL-E 프롬프트를 작성하라. 상품의 외형, 색상, 사용 장면을 구체적으로 묘사하라. 프롬프트는 영어로 작성하라.',
+    `thumbnail_prompt_instruction: 항상 다음 문구를 사용: "${thumbnailInstruction}"`,
+    `compliance_checklist: 다음 항목 중 이 상품에 해당하는 것을 선별하여 포함하라: ${JSON.stringify(config.complianceChecklist || [])}`,
+    'competitive_edge: 이 카테고리에서 경쟁 상품들이 흔히 강조하는 포인트를 분석하고, 이 상품만의 차별화 전략을 1~2문장으로 제안하라.',
+    'image_analysis 필드가 제공된 경우, 해당 텍스트를 상품 외형/디자인 정보로 활용하여 더 정확한 카피와 썸네일 프롬프트를 작성하라.',
+    'is_imported가 true이면 수입 상품 관련 필수 표기사항을 compliance_checklist에 반드시 포함하라.',
+    'thumbnail_style이 제공되면 해당 스타일을 썸네일 프롬프트에 반영하라.(예: 귀여운 느낌이면 pastel colors, rounded edges, playful composition 등으로 프롬프트를 구성)',
+    'description_tone이 제공되면 detail_page_copy의 톤을 해당 지시에 맞춰 조정하라.',
+    'must_include_images가 제공되면 상세페이지 구성에서 해당 이미지들이 어디에 배치되면 좋을지 detail_page_copy 안에 [이미지 삽입 위치: 설명] 형태로 표시하라.',
     '반드시 JSON object만 반환하라. Return only a JSON object.',
     `disclaimer는 정확히 다음 문구 사용: ${disclaimer}`,
   ].join('\n')

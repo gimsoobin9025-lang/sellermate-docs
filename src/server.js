@@ -7,6 +7,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { listingCopyTool, runListingCopy } from './tools/listing_copy.js'
 import { keywordStrategyTool, runKeywordStrategy } from './tools/keyword_strategy.js'
+import { translateListingTool, runTranslateListing } from './tools/translate_listing.js'
 
 const PORT = Number(process.env.PORT || 3000)
 const HOST = process.env.HOST?.trim()
@@ -18,6 +19,7 @@ const DOCS_DIR = resolve(__dirname, '../docs')
 const TOOL_REGISTRY = [
   { def: listingCopyTool, run: runListingCopy },
   { def: keywordStrategyTool, run: runKeywordStrategy },
+  { def: translateListingTool, run: runTranslateListing },
 ]
 
 function createMcpServer() {
