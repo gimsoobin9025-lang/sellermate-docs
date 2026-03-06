@@ -42,6 +42,7 @@ function getListingOutputSchema(platform) {
         detail_page_copy: z.string(),
         thumbnail_prompt: z.string(),
         thumbnail_prompt_instruction: z.string(),
+        image_upload_instruction: z.string(),
         compliance_checklist: z.array(z.string()),
         competitive_edge: z.string(),
         seo_tags: z.array(z.string()),
@@ -61,6 +62,7 @@ function getListingOutputSchema(platform) {
         detail_page_copy: z.string(),
         thumbnail_prompt: z.string(),
         thumbnail_prompt_instruction: z.string(),
+        image_upload_instruction: z.string(),
         compliance_checklist: z.array(z.string()),
         competitive_edge: z.string(),
         seo_tags: z.array(z.string()),
@@ -82,6 +84,7 @@ function getListingOutputSchema(platform) {
         detail_page_copy: z.string(),
         thumbnail_prompt: z.string(),
         thumbnail_prompt_instruction: z.string(),
+        image_upload_instruction: z.string(),
         compliance_checklist: z.array(z.string()),
         competitive_edge: z.string(),
         seo_tags: z.array(z.string()),
@@ -111,6 +114,10 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
       config.locale === 'ko'
         ? '위 프롬프트를 ChatGPT 이미지 생성에 붙여넣으면 썸네일 이미지를 만들 수 있습니다.'
         : 'Paste the above prompt into ChatGPT image generation to create a thumbnail image.',
+    image_upload_instruction:
+      config.locale === 'ko'
+        ? '복사해서 고객에게 전달하세요: "상품 등록 시 원본 상품 이미지를 함께 업로드하고, 아래 썸네일 프롬프트로 생성한 대표 이미지를 메인 썸네일로 설정해 주세요."'
+        : 'Copy and send to your customer: "When creating the listing, upload the original product images together and set the generated thumbnail (from the prompt below) as the main image."',
     compliance_checklist: config.complianceChecklist || [],
     competitive_edge:
       config.locale === 'ko'
@@ -198,6 +205,7 @@ export async function runListingCopy(args) {
     '상품 정합성이 최우선: image_analysis, product_details, must_include_images에 나온 제품 형태/색상/핵심 파츠를 유지하고 다른 제품처럼 바꾸지 마라.',
     '브랜드명, 텍스트 오버레이, 워터마크, 타사 로고는 thumbnail_prompt에 넣지 마라.',
     `thumbnail_prompt_instruction: 항상 다음 문구를 사용: "${thumbnailInstruction}"`,
+    `image_upload_instruction: 고객에게 그대로 전달할 복붙 문장을 작성하라. 의미는 반드시 다음을 포함: 원본 등록 이미지도 함께 업로드하고, thumbnail_prompt로 생성한 이미지를 메인 썸네일로 설정하라. 언어는 ${config.locale === 'ko' ? '한국어' : 'English'}로 작성하라.`,
     `compliance_checklist: 다음 항목 중 이 상품에 해당하는 것을 선별하여 포함하라: ${JSON.stringify(config.complianceChecklist || [])}`,
     'competitive_edge: 이 카테고리에서 경쟁 상품들이 흔히 강조하는 포인트를 분석하고, 이 상품만의 차별화 전략을 1~2문장으로 제안하라.',
     'image_analysis 필드가 제공된 경우, 해당 텍스트를 상품 외형/디자인 정보로 활용하여 더 정확한 카피와 썸네일 프롬프트를 작성하라.',
