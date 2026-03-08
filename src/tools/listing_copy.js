@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { getDisclaimer } from '../lib/disclaimer.js'
 import { containsForbiddenWords, noFabricatedMetricsGuard, requireFields, sanitizeText } from '../lib/validation.js'
 import { maybeEnhanceWithLlm } from '../lib/llm.js'
-import { getPlatformConfig, GLOBAL_METRIC_RULE } from '../lib/platform-prompts.js'
+import { getPlatformConfig, GLOBAL_METRIC_RULE, getCategoryConfig } from '../lib/platform-prompts.js'
 
 const questionsForSellerSchema = z.array(
   z.object({
@@ -47,6 +47,7 @@ export const listingCopyTool = {
     thumbnail_style: z.string().optional(),
     description_tone: z.string().optional(),
     must_include_images: z.array(z.string()).optional(),
+    category: z.enum(['fashion', 'food', 'electronics', 'beauty', 'kids', 'living', 'general']).optional(),
   },
 }
 
@@ -132,11 +133,15 @@ function getListingOutputSchema(platform) {
   }
 }
 
-function buildListingFallback(platform, { product, audience, tone, points, disclaimer, config }) {
+function buildListingFallback(platform, { product, audience, tone, points, disclaimer, config, categoryConfig }) {
   const detailPageCopy =
     config.locale === 'ko'
       ? `${product}의 핵심 특장점을 확인하세요. ${points.join(', ')}. ${audience}에게 최적화된 상품입니다.`
       : `Discover the key features of ${product}: ${points.join(', ')}. Optimized for ${audience}.`
+
+  const locale = config.locale
+  const sectionDescriptions = categoryConfig.sectionDescriptions[locale] || categoryConfig.sectionDescriptions.ko
+  const categoryQuestions = categoryConfig.additionalQuestions[locale] || categoryConfig.additionalQuestions.ko
 
   const common = {
     detail_page_copy: detailPageCopy,
@@ -161,13 +166,13 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
       config.locale === 'ko'
         ? '복사해서 고객에게 전달하세요: "상세설명 프롬프트를 ChatGPT에 등록할 때 판매상품의 실사 이미지도 함께 업로드해야 제품 정합성이 높아집니다. 상품 등록 시 원본 상품 이미지를 함께 업로드하고, 아래 썸네일 프롬프트로 생성한 대표 이미지를 메인 썸네일로 설정해 주세요."'
         : 'Copy and send to your customer: "For better product fidelity, upload real product photos together when you use the detail prompt in ChatGPT. When creating the listing, upload the original product images and set the generated thumbnail (from the prompt below) as the main image."',
-    compliance_checklist: config.complianceChecklist || [],
+    compliance_checklist: [...(config.complianceChecklist || []), ...(categoryConfig.complianceExtras[locale] || categoryConfig.complianceExtras.ko)],
     competitive_edge:
       config.locale === 'ko'
         ? `이 카테고리에서 ${points[0] || '핵심 장점'}을 중심으로 차별화하는 전략을 권장합니다.`
         : `Consider differentiating on ${points[0] || 'a key feature'} in this product category.`,
-    questions_for_seller:
-      config.locale === 'ko'
+    questions_for_seller: [
+      ...(config.locale === 'ko'
         ? [
             { field: 'brand_name', question: '브랜드명이 있나요? (없으면 무브랜드로 진행합니다)', required: false },
             {
@@ -208,38 +213,18 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
               required: true,
               options: ['Professional & trustworthy', 'Warm & friendly', 'Trendy & stylish', 'Simple & clean'],
             },
-          ],
+          ]),
+      ...categoryQuestions,
+    ],
     detail_page_blueprint: {
-      recommended_sections: [
-        {
-          type: 'hero',
-          description: config.locale === 'ko' ? '메인 캐치카피 + 대표 이미지' : 'Hero: main catch copy + hero image',
-        },
-        {
-          type: 'empathy',
-          description: config.locale === 'ko' ? '고객 공감 도입부' : 'Customer empathy introduction',
-        },
-        {
-          type: 'features',
-          description: config.locale === 'ko' ? '핵심 특징 3~5개' : '3-5 key features',
-        },
-        {
-          type: 'material',
-          description: config.locale === 'ko' ? '소재/성분 설명' : 'Material/ingredient details',
-        },
-        {
-          type: 'usage',
-          description: config.locale === 'ko' ? '이런 분께 추천 / 사용 장면' : 'Recommended for / usage scenes',
-        },
-        {
-          type: 'closing',
-          description: config.locale === 'ko' ? '구매 유도 마무리' : 'Purchase CTA closing',
-        },
-      ],
+      recommended_sections: categoryConfig.requiredSections.map((type) => ({
+        type,
+        description: sectionDescriptions[type] || type,
+      })),
       ai_notes:
         config.locale === 'ko'
-          ? `${product} 상품의 핵심 셀링포인트는 ${points.slice(0, 2).join(', ')}입니다. ${audience} 타겟에 맞는 톤으로 구성을 권장합니다.`
-          : `Key selling points for ${product}: ${points.slice(0, 2).join(', ')}. Recommend structuring for ${audience} target.`,
+          ? `${product}는 ${categoryConfig.label[config.locale] || categoryConfig.label.ko} 카테고리이며, 핵심 셀링포인트는 ${points.slice(0, 2).join(', ')}입니다.`
+          : `${product} belongs to ${categoryConfig.label[config.locale] || categoryConfig.label.en} category. Key selling points: ${points.slice(0, 2).join(', ')}.`,
     },
   }
 
@@ -303,12 +288,22 @@ export async function runListingCopy(args) {
   const forbidden = (args.forbidden_words || []).map(sanitizeText).filter(Boolean)
 
   const config = getPlatformConfig(args.platform)
-  const disclaimer = getDisclaimer(config.locale)
-  const fallback = buildListingFallback(args.platform, { product, audience, tone, points, disclaimer, config })
+  const categoryConfig = getCategoryConfig(args.category || 'general')
+  const locale = config.locale
+  const disclaimer = getDisclaimer(locale)
+  const fallback = buildListingFallback(args.platform, {
+    product,
+    audience,
+    tone,
+    points,
+    disclaimer,
+    config,
+    categoryConfig,
+  })
   const outputSchema = getListingOutputSchema(args.platform)
 
   const thumbnailInstruction =
-    config.locale === 'ko'
+    locale === 'ko'
       ? '🚨 중요: 모지 채팅방을 나가서 이미지 생성 가능한 GPT 채팅방 또는 나노바나나로 이동하세요. 📌 아래 프롬프트를 그대로 붙여넣고, 원본 상품사진도 꼭 함께 업로드해 이미지를 만들어 주세요.'
       : 'Paste this prompt into another GPT image-generation chat or an image tool (e.g., Nanobanana) to create the thumbnail.'
 
@@ -316,6 +311,9 @@ export async function runListingCopy(args) {
     config.listingCopyRole,
     ...config.listingCopyRules,
     GLOBAL_METRIC_RULE,
+    `상품 카테고리: ${categoryConfig.label[locale] || categoryConfig.label.ko}`,
+    `이 카테고리의 상세페이지 필수 섹션: ${categoryConfig.requiredSections.join(', ')}`,
+    `각 섹션 설명: ${JSON.stringify(categoryConfig.sectionDescriptions[locale] || categoryConfig.sectionDescriptions.ko)}`,
     'detail_page_copy: 상세페이지에 바로 사용할 수 있는 긴 카피를 작성하라. 구매자의 불안을 해소하고, 핵심 셀링포인트를 시각적으로 구분되게 구성하라.',
     'detail_page_image_prompts: 한국 온라인 쇼핑몰 상세페이지용 길쭉한(세로형) 섹션 이미지 프롬프트를 4~12개 작성하라. 각 프롬프트는 반드시 2줄 이상으로 작성하고, 첫 줄은 사용 안내 문구(예: "Usage: Paste this in an image-capable GPT and upload real product photos together.")를 넣고 둘째 줄은 반드시 "Please generate this image:"로 시작하라. 섹션별 역할(인트로/핵심특징/소재·스펙/사용장면/사이즈·가이드/마무리CTA)을 반영하라.',
     'detail_page_image_prompt_instruction: 사용자가 모지 채팅방 밖(일반 GPT 이미지 채팅/나노바나나)에서 원본 상품사진과 함께 위 프롬프트들을 순서대로 사용하도록 안내하는 문장을 작성하라.',
@@ -326,8 +324,11 @@ export async function runListingCopy(args) {
     '상품 정합성이 최우선: image_analysis, product_details, must_include_images에 나온 제품 형태/색상/핵심 파츠를 유지하고 다른 제품처럼 바꾸지 마라.',
     '브랜드명, 텍스트 오버레이, 워터마크, 타사 로고는 thumbnail_prompt에 넣지 마라.',
     `thumbnail_prompt_instruction: 항상 다음 문구를 사용: "${thumbnailInstruction}"`,
-    `image_upload_instruction: 고객에게 그대로 전달할 복붙 문장을 작성하라. 의미는 반드시 다음을 포함: (1) 상세설명/썸네일 생성 프롬프트를 사용할 때 판매상품의 실사 이미지를 함께 업로드해야 정확도가 올라간다, (2) 원본 등록 이미지도 함께 업로드한다, (3) thumbnail_prompt로 생성한 이미지를 메인 썸네일로 설정한다. 언어는 ${config.locale === 'ko' ? '한국어' : 'English'}로 작성하라.`,
-    `compliance_checklist: 다음 항목 중 이 상품에 해당하는 것을 선별하여 포함하라: ${JSON.stringify(config.complianceChecklist || [])}`,
+    `image_upload_instruction: 고객에게 그대로 전달할 복붙 문장을 작성하라. 의미는 반드시 다음을 포함: (1) 상세설명/썸네일 생성 프롬프트를 사용할 때 판매상품의 실사 이미지를 함께 업로드해야 정확도가 올라간다, (2) 원본 등록 이미지도 함께 업로드한다, (3) thumbnail_prompt로 생성한 이미지를 메인 썸네일로 설정한다. 언어는 ${locale === 'ko' ? '한국어' : 'English'}로 작성하라.`,
+    `compliance_checklist: 다음 항목 중 이 상품에 해당하는 것을 선별하여 포함하라: ${JSON.stringify([
+      ...(config.complianceChecklist || []),
+      ...(categoryConfig.complianceExtras[locale] || categoryConfig.complianceExtras.ko),
+    ])}`,
     'competitive_edge: 이 카테고리에서 경쟁 상품들이 흔히 강조하는 포인트를 분석하고, 이 상품만의 차별화 전략을 1~2문장으로 제안하라.',
     'questions_for_seller: 더 완벽한 상세설명/썸네일을 만들기 위해 셀러에게 물어볼 질문 목록을 생성하라. 각 질문은 field(영문 키), question(사용자에게 보여줄 질문), required(필수 여부), options(선택지, 있으면)을 포함한다. 최소 3개, 최대 6개.',
     'detail_page_blueprint: AI가 상품을 분석하여 추천하는 상세페이지 구성안을 작성하라. recommended_sections에 섹션 타입(hero/empathy/features/material/usage/size_guide/closing 등)과 설명을 배열로 제공하라. ai_notes에 상품 분석 결과와 디자인 제안을 1~2문장으로 작성하라.',

@@ -1,5 +1,19 @@
 # TASKS
 
+- [ ] v1.3.0 카테고리별 템플릿 + GPT Instructions
+  - [x] platform-prompts.js에 CATEGORY_CONFIGS 추가 (fashion/food/electronics/beauty/kids/living/general)
+  - [x] getCategoryConfig() 함수 추가
+  - [x] listing_copy inputSchema에 category 필드 추가
+  - [x] listing_copy 시스템 프롬프트에 카테고리 규칙 반영
+  - [x] listing_copy questions_for_seller에 카테고리별 질문 병합
+  - [x] listing_copy compliance_checklist에 카테고리별 항목 추가
+  - [x] detail_page_generate inputSchema에 category 필드 추가
+  - [x] detail_page_generate 섹션 구조 카테고리별 분기
+  - [ ] GPT Instructions 업데이트 (대화 흐름 + 카테고리 자동 감지)
+  - [ ] npm test 통과 확인
+  - [ ] MCP 회귀 테스트
+  - [ ] Railway 배포 + 검증
+
 - [ ] v1.2.0 HTML 상세페이지 생성
   - [x] listing_copy에 questions_for_seller 출력 추가
   - [x] listing_copy에 detail_page_blueprint 출력 추가

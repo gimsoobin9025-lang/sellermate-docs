@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { getDisclaimer } from '../lib/disclaimer.js'
 import { noFabricatedMetricsGuard, sanitizeText } from '../lib/validation.js'
 import { maybeEnhanceWithLlm } from '../lib/llm.js'
-import { getPlatformConfig, GLOBAL_METRIC_RULE } from '../lib/platform-prompts.js'
+import { getPlatformConfig, GLOBAL_METRIC_RULE, getCategoryConfig } from '../lib/platform-prompts.js'
 
 export const detailPageGenerateTool = {
   name: 'detail_page_generate',
@@ -32,6 +32,7 @@ export const detailPageGenerateTool = {
     origin_country: z.string().optional(),
 
     blueprint_sections: z.array(z.string()).optional(),
+    category: z.enum(['fashion', 'food', 'electronics', 'beauty', 'kids', 'living', 'general']).optional(),
   },
 }
 
@@ -95,7 +96,7 @@ function getSectionCount(length) {
   return { short: 5, medium: 7, detailed: 10 }[length] || 7
 }
 
-function buildFallback(args, disclaimer, locale) {
+function buildFallback(args, disclaimer, locale, categoryConfig) {
   const product = sanitizeText(args.product_name)
   const audience = sanitizeText(args.target_audience)
   const points = (args.selling_points || []).map(sanitizeText).filter(Boolean)
@@ -107,9 +108,7 @@ function buildFallback(args, disclaimer, locale) {
   const width = getContainerWidth(args.platform)
   const sectionCount = getSectionCount(args.detail_length || 'medium')
 
-  const baseSections = args.blueprint_sections?.length
-    ? args.blueprint_sections
-    : ['hero', 'empathy', 'features', 'material', 'usage', 'closing']
+  const baseSections = args.blueprint_sections?.length ? args.blueprint_sections : categoryConfig.requiredSections
 
   const sectionTypes = Array.from({ length: sectionCount }, (_, i) => {
     if (baseSections[i]) return baseSections[i]
@@ -117,14 +116,7 @@ function buildFallback(args, disclaimer, locale) {
     return extras[i % extras.length]
   })
 
-  const sectionTitles = {
-    hero: '메인 비주얼',
-    empathy: '고객 공감',
-    features: '핵심 특징',
-    material: '소재/성분',
-    usage: '추천/사용 장면',
-    closing: '구매 유도 마무리',
-  }
+  const sectionTitles = categoryConfig.sectionDescriptions[locale] || categoryConfig.sectionDescriptions.ko
 
   const sectionsSummary = sectionTypes.map((type, i) => ({
     section_number: i + 1,
@@ -240,9 +232,10 @@ ${sectionBlocks}
 export async function runDetailPageGenerate(args) {
   const platform = String(args.platform || 'smartstore').toLowerCase()
   const config = getPlatformConfig(platform)
+  const categoryConfig = getCategoryConfig(args.category || 'general')
   const disclaimer = getDisclaimer(config.locale)
 
-  const fallback = buildFallback(args, disclaimer, config.locale)
+  const fallback = buildFallback(args, disclaimer, config.locale, categoryConfig)
 
   if (platform === 'amazon' || platform === 'ebay') {
     return {
@@ -273,6 +266,10 @@ export async function runDetailPageGenerate(args) {
     `Mood/Style: ${moodConfig[config.locale] || moodConfig.ko}`,
     `Color scheme: primary=${moodConfig.colors.primary}, secondary=${moodConfig.colors.secondary}, bg=${moodConfig.colors.bg}, accent=${moodConfig.colors.accent}`,
     `Number of sections: ${sectionCount}`,
+    `상품 카테고리: ${categoryConfig.label[config.locale] || categoryConfig.label.ko}`,
+    `이 카테고리의 상세페이지 섹션 구조: ${categoryConfig.requiredSections
+      .map((s) => `${s}(${(categoryConfig.sectionDescriptions[config.locale] || categoryConfig.sectionDescriptions.ko)[s] || s})`)
+      .join(' -> ')}`,
     brand ? `Brand name: ${brand}` : 'No brand (unbranded product)',
     highlights.length > 0 ? `Must highlight: ${highlights.join(', ')}` : '',
     GLOBAL_METRIC_RULE,
@@ -306,8 +303,8 @@ export async function runDetailPageGenerate(args) {
     input: {
       ...args,
       container_width: getContainerWidth(platform),
-      color_system: colors,
-      preferred_sections: args.blueprint_sections || ['hero', 'empathy', 'features', 'material', 'usage', 'closing'],
+      color_system: moodConfig.colors,
+      preferred_sections: args.blueprint_sections || categoryConfig.requiredSections,
     },
     fallback,
     outputSchema: detailPageOutputSchema,

@@ -166,3 +166,255 @@ export function getDetailPageHtmlConfig(platform = 'smartstore') {
   const key = String(platform || 'smartstore').toLowerCase()
   return DETAIL_PAGE_HTML_CONFIGS[key] || DETAIL_PAGE_HTML_CONFIGS.smartstore
 }
+
+export const CATEGORY_CONFIGS = {
+  fashion: {
+    label: { ko: '패션/의류', en: 'Fashion/Apparel' },
+    requiredSections: ['hero', 'empathy', 'features', 'material_fit', 'size_guide', 'styling', 'care', 'closing'],
+    sectionDescriptions: {
+      ko: {
+        hero: '메인 착용컷 + 캐치카피',
+        empathy: '고객 공감 (스타일 고민, 체형 고민)',
+        features: '디자인 포인트 3~4개',
+        material_fit: '소재 상세 + 핏 설명',
+        size_guide: '사이즈표 + 모델 착용 정보',
+        styling: '코디 제안 / 스타일링 팁',
+        care: '세탁 방법 / 관리 안내',
+        closing: '구매 유도 + 교환/반품 안내',
+      },
+      en: {
+        hero: 'Hero shot + catch copy',
+        empathy: 'Customer empathy',
+        features: '3-4 design highlights',
+        material_fit: 'Material details + fit guide',
+        size_guide: 'Size chart + model info',
+        styling: 'Styling suggestions',
+        care: 'Care instructions',
+        closing: 'Purchase CTA + return policy',
+      },
+    },
+    additionalQuestions: {
+      ko: [
+        { field: 'fabric_composition', question: '소재 혼용률을 알려주세요', required: true },
+        { field: 'size_range', question: '사이즈 범위를 알려주세요', required: true },
+      ],
+      en: [
+        { field: 'fabric_composition', question: 'Fabric composition?', required: true },
+        { field: 'size_range', question: 'Size range?', required: true },
+      ],
+    },
+    complianceExtras: { ko: ['소재 혼용률 표기 필수', '세탁방법 표기 필수', '제조국 표기 필수'], en: [] },
+  },
+  food: {
+    label: { ko: '식품', en: 'Food/Grocery' },
+    requiredSections: ['hero', 'taste_appeal', 'ingredients', 'nutrition', 'storage', 'usage', 'certification', 'closing'],
+    sectionDescriptions: {
+      ko: {
+        hero: '상품 대표 이미지 + 맛/품질 캐치카피',
+        taste_appeal: '맛/식감 소구',
+        ingredients: '원재료 및 함량 표시',
+        nutrition: '영양성분 정보',
+        storage: '보관방법 / 유통기한',
+        usage: '조리법 / 섭취 방법',
+        certification: '인증 정보',
+        closing: '구매 유도 + 배송 안내',
+      },
+      en: {
+        hero: 'Hero + taste/quality copy',
+        taste_appeal: 'Taste/texture appeal',
+        ingredients: 'Ingredients',
+        nutrition: 'Nutrition facts',
+        storage: 'Storage / expiration',
+        usage: 'How to consume',
+        certification: 'Certifications',
+        closing: 'CTA + shipping info',
+      },
+    },
+    additionalQuestions: {
+      ko: [
+        { field: 'ingredients_list', question: '원재료를 알려주세요', required: true },
+        { field: 'storage_method', question: '보관 방법은?', required: true, options: ['실온', '냉장', '냉동'] },
+      ],
+      en: [
+        { field: 'ingredients_list', question: 'Ingredients list?', required: true },
+        { field: 'storage_method', question: 'Storage method?', required: true },
+      ],
+    },
+    complianceExtras: { ko: ['원재료/함량 표시 필수', '유통기한/소비기한 표시 필수', '보관방법 표기 필수'], en: [] },
+  },
+  electronics: {
+    label: { ko: '전자기기', en: 'Electronics' },
+    requiredSections: ['hero', 'key_specs', 'features', 'compatibility', 'unboxing', 'warranty', 'closing'],
+    sectionDescriptions: {
+      ko: {
+        hero: '제품 대표컷 + 핵심 스펙 강조',
+        key_specs: '주요 사양 표',
+        features: '핵심 기능 설명',
+        compatibility: '호환성 / 연결성',
+        unboxing: '구성품 안내',
+        warranty: 'A/S 및 보증',
+        closing: '구매 유도 + 설치 안내',
+      },
+      en: {
+        hero: 'Hero + key specs',
+        key_specs: 'Specs table',
+        features: 'Key features',
+        compatibility: 'Compatibility',
+        unboxing: 'What is in the box',
+        warranty: 'Warranty',
+        closing: 'CTA',
+      },
+    },
+    additionalQuestions: {
+      ko: [
+        { field: 'key_specs', question: '주요 사양을 알려주세요', required: true },
+        { field: 'whats_in_box', question: '구성품을 알려주세요', required: true },
+      ],
+      en: [
+        { field: 'key_specs', question: 'Key specs?', required: true },
+        { field: 'whats_in_box', question: 'What is included?', required: true },
+      ],
+    },
+    complianceExtras: { ko: ['KC인증 정보 필수', '정격전압/소비전력 표기'], en: [] },
+  },
+  beauty: {
+    label: { ko: '뷰티/화장품', en: 'Beauty/Cosmetics' },
+    requiredSections: ['hero', 'skin_appeal', 'ingredients', 'how_to_use', 'texture', 'before_after', 'certification', 'closing'],
+    sectionDescriptions: {
+      ko: {
+        hero: '제품 대표컷 + 고민 해결 캐치카피',
+        skin_appeal: '피부 타입별 추천',
+        ingredients: '전성분 표시',
+        how_to_use: '사용 방법',
+        texture: '텍스처/향 설명',
+        before_after: '사용 전후 비교(과장 금지)',
+        certification: '인증 정보',
+        closing: '구매 유도 + 피부 타입 안내',
+      },
+      en: {
+        hero: 'Hero + skin concern copy',
+        skin_appeal: 'Skin-type recommendation',
+        ingredients: 'Full ingredients',
+        how_to_use: 'How to use',
+        texture: 'Texture',
+        before_after: 'Before/after (no hype)',
+        certification: 'Certifications',
+        closing: 'CTA',
+      },
+    },
+    additionalQuestions: {
+      ko: [
+        { field: 'full_ingredients', question: '전성분 목록을 알려주세요', required: true },
+        { field: 'volume', question: '용량은?', required: true },
+      ],
+      en: [
+        { field: 'full_ingredients', question: 'Full ingredients list?', required: true },
+        { field: 'volume', question: 'Volume?', required: true },
+      ],
+    },
+    complianceExtras: { ko: ['전성분 표시 필수', '사용기한/개봉후기간 표시 필수', '과대광고 금지'], en: [] },
+  },
+  kids: {
+    label: { ko: '유아동', en: 'Kids/Baby' },
+    requiredSections: ['hero', 'parent_empathy', 'safety', 'features', 'material', 'age_guide', 'care', 'closing'],
+    sectionDescriptions: {
+      ko: {
+        hero: '아이 사용컷 + 부모 공감 카피',
+        parent_empathy: '부모 공감',
+        safety: '안전 인증/검사 정보',
+        features: '핵심 기능',
+        material: '소재 정보',
+        age_guide: '연령/사이즈 가이드',
+        care: '관리 방법',
+        closing: '구매 유도 + 안전 안내',
+      },
+      en: {
+        hero: 'Hero + parent copy',
+        parent_empathy: 'Parent empathy',
+        safety: 'Safety certification',
+        features: 'Key features',
+        material: 'Material details',
+        age_guide: 'Age/size guide',
+        care: 'Care',
+        closing: 'CTA',
+      },
+    },
+    additionalQuestions: {
+      ko: [
+        { field: 'age_range', question: '적합 연령대를 알려주세요', required: true },
+        { field: 'safety_cert', question: '안전 인증 정보가 있나요?', required: true },
+      ],
+      en: [
+        { field: 'age_range', question: 'Suitable age range?', required: true },
+        { field: 'safety_cert', question: 'Safety certification?', required: true },
+      ],
+    },
+    complianceExtras: { ko: ['KC안전인증 필수', '연령 적합성 표기 필수'], en: [] },
+  },
+  living: {
+    label: { ko: '생활용품', en: 'Home/Living' },
+    requiredSections: ['hero', 'problem_solve', 'features', 'specs', 'usage_scene', 'care', 'closing'],
+    sectionDescriptions: {
+      ko: {
+        hero: '대표컷 + 편의성 캐치카피',
+        problem_solve: '해결하는 문제',
+        features: '핵심 기능',
+        specs: '규격/재질/무게',
+        usage_scene: '사용 장면',
+        care: '관리 방법',
+        closing: '구매 유도',
+      },
+      en: {
+        hero: 'Hero + convenience copy',
+        problem_solve: 'Problem solving',
+        features: 'Key features',
+        specs: 'Specs',
+        usage_scene: 'Usage scene',
+        care: 'Care',
+        closing: 'CTA',
+      },
+    },
+    additionalQuestions: {
+      ko: [
+        { field: 'dimensions', question: '크기/규격을 알려주세요', required: true },
+        { field: 'material', question: '재질은?', required: true },
+      ],
+      en: [
+        { field: 'dimensions', question: 'Dimensions?', required: true },
+        { field: 'material', question: 'Material?', required: true },
+      ],
+    },
+    complianceExtras: { ko: ['제조국 표기 필수', '재질/성분 표기'], en: [] },
+  },
+  general: {
+    label: { ko: '기타/일반', en: 'General' },
+    requiredSections: ['hero', 'empathy', 'features', 'specs', 'usage', 'closing'],
+    sectionDescriptions: {
+      ko: {
+        hero: '메인 캐치카피 + 대표 이미지',
+        empathy: '고객 공감 도입',
+        features: '핵심 특징 3~5개',
+        specs: '상세 스펙/규격',
+        usage: '추천/사용 장면',
+        closing: '구매 유도 마무리',
+      },
+      en: {
+        hero: 'Hero copy + image',
+        empathy: 'Customer empathy',
+        features: 'Key features',
+        specs: 'Specifications',
+        usage: 'Usage scenes',
+        closing: 'CTA closing',
+      },
+    },
+    additionalQuestions: { ko: [], en: [] },
+    complianceExtras: { ko: [], en: [] },
+  },
+}
+
+export const DEFAULT_CATEGORY = 'general'
+
+export function getCategoryConfig(category = DEFAULT_CATEGORY) {
+  const key = String(category || DEFAULT_CATEGORY).toLowerCase()
+  return CATEGORY_CONFIGS[key] || CATEGORY_CONFIGS.general
+}
