@@ -20,6 +20,13 @@ test('listing_copy own-product flow adds structured readiness outputs and machin
   assert.equal(Array.isArray(out.image_plan), true)
   assert.equal(Array.isArray(out.risk_flags), true)
   assert.equal(Array.isArray(out.required_checks), true)
+  assert.equal(Array.isArray(out.thumbnail_prompts), true)
+  assert.equal(Array.isArray(out.thumbnail_plan), true)
+  assert.equal(typeof out.recommended_main_thumbnail, 'object')
+  assert.equal(typeof out.model_profile.profile, 'string')
+  assert.equal(typeof out.visual_identity.summary, 'string')
+  assert.equal(Array.isArray(out.consistency_rules), true)
+  assert.equal(Array.isArray(out.reference_image_strategy.guidance), true)
   assert.equal(typeof out.localized_product_summary, 'string')
   assert.equal(typeof out.ready_to_upload, 'boolean')
   assert.equal(out.ready_to_upload, false)
@@ -30,7 +37,33 @@ test('listing_copy own-product flow adds structured readiness outputs and machin
   assert.equal(out.next_steps[0].step, 1)
   assert.match(out.next_steps[0].action, /제목|Confirm title/i)
   assert.equal(out.image_plan[0].role, 'main_thumbnail')
+  assert.equal(out.thumbnail_plan[0].slot, 1)
+  assert.equal(out.thumbnail_prompt, out.thumbnail_prompts[out.recommended_main_thumbnail.slot - 1])
   assert.equal(out.questions_for_seller.some((item) => item.field === 'source_marketplace'), false)
+})
+
+test('listing_copy supports multi-thumbnail planning and keeps backward-compatible main thumbnail output', async () => {
+  const out = await runListingCopy({
+    ...baseArgs,
+    product_details: '적합 연령 6개월 이상, KC 안전 인증 완료, 구성품: 흡착 식판, 뚜껑, 스푼. 재질은 실리콘입니다.',
+    image_analysis: '실리콘 식판 본체와 뚜껑, 스푼이 포함된 민트색 제품 사진',
+    desired_thumbnail_count: 3,
+    thumbnail_requests: [
+      { role: 'warm mood cut', mood: 'warm and cozy', style: 'soft commercial lifestyle', objective: 'emotion-first click appeal', use_model: true },
+      { role: 'product-only cut', style: 'clean catalog', objective: 'clear product recognition' },
+      'detail cut',
+    ],
+  })
+
+  assert.equal(out.selling_mode, 'own_product')
+  assert.equal(out.ready_to_upload, true)
+  assert.equal(out.thumbnail_prompts.length, 3)
+  assert.equal(out.thumbnail_plan.length, 3)
+  assert.equal(out.thumbnail_plan[0].use_model, true)
+  assert.equal(out.recommended_main_thumbnail.slot >= 1, true)
+  assert.equal(out.thumbnail_prompt, out.thumbnail_prompts[out.recommended_main_thumbnail.slot - 1])
+  assert.match(out.thumbnail_prompts[0], /Please generate this image:/)
+  assert.match(out.detail_page_image_prompts[3], /shared model persona feeling|같은 모델 페르소나/i)
 })
 
 test('listing_copy becomes upload-ready when critical own-product requirements are supplied', async () => {
@@ -103,4 +136,6 @@ test('listing_copy auto-detects cross-border mode from source fields for backwar
   assert.equal(out.required_missing.some((item) => item.field === 'origin_country' && item.severity === 'critical'), true)
   assert.equal(out.next_steps.some((item) => /source|소스|원상품/i.test(item.action)), true)
   assert.equal(out.image_plan[0].notes.includes('pure white background'), true)
+  assert.equal(Array.isArray(out.thumbnail_prompts), true)
+  assert.equal(typeof out.reference_image_strategy.priority, 'string')
 })

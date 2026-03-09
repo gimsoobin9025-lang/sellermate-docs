@@ -60,11 +60,55 @@ const imagePlanItemSchema = z.object({
   notes: z.string(),
 })
 
+const thumbnailRequestSchema = z.union([
+  z.string(),
+  z.object({
+    role: z.string().optional(),
+    style: z.string().optional(),
+    mood: z.string().optional(),
+    objective: z.string().optional(),
+    focus: z.string().optional(),
+    use_model: z.boolean().optional(),
+  }),
+])
+
+const thumbnailPlanItemSchema = z.object({
+  slot: z.number(),
+  role: z.string(),
+  style: z.string(),
+  mood: z.string(),
+  objective: z.string(),
+  focus: z.string(),
+  use_model: z.boolean(),
+  prompt: z.string(),
+})
+
+const recommendedMainThumbnailSchema = z.object({
+  slot: z.number(),
+  role: z.string(),
+  reason: z.string(),
+})
+
+const modelProfileSchema = z.object({
+  usage_mode: z.enum(['none', 'optional', 'shared_if_used']),
+  profile: z.string(),
+})
+
+const visualIdentitySchema = z.object({
+  summary: z.string(),
+  cues: z.array(z.string()),
+})
+
+const referenceImageStrategySchema = z.object({
+  priority: z.string(),
+  guidance: z.array(z.string()),
+})
+
 export const listingCopyTool = {
   name: 'listing_copy',
   title: 'Listing Copy Generator',
   description:
-    'All-in-one e-commerce listing generator. Supports direct listing for your own product and cross-border sourcing flows for overseas marketplace products. Provide product info and optionally upload product photos for analysis. You can specify thumbnail style (e.g. cute, minimal, luxury), description tone (e.g. professional, friendly), and must-include images. Outputs: listing copy, detail page description with image placement guides, thumbnail prompt, compliance checklist, structured readiness/risk guidance, and competitive tips.',
+    'All-in-one e-commerce listing generator. Supports direct listing for your own product and cross-border sourcing flows for overseas marketplace products. Provide product info and optionally upload product photos for analysis. You can specify thumbnail style or multiple thumbnail requests, description tone, and must-include images. Outputs: listing copy, detail page description with image placement guides, thumbnail prompts/plans, compliance checklist, structured readiness/risk guidance, and competitive tips.',
   annotations: {
     readOnlyHint: true,
     openWorldHint: false,
@@ -83,6 +127,8 @@ export const listingCopyTool = {
     origin_country: z.string().optional(),
     image_analysis: z.string().optional(),
     thumbnail_style: z.string().optional(),
+    desired_thumbnail_count: z.number().int().min(1).max(6).optional(),
+    thumbnail_requests: z.array(thumbnailRequestSchema).max(6).optional(),
     description_tone: z.string().optional(),
     must_include_images: z.array(z.string()).optional(),
     category: z.enum(['fashion', 'food', 'electronics', 'beauty', 'kids', 'living', 'general']).optional(),
@@ -113,6 +159,13 @@ function getCommonFlowSchema() {
     ready_to_upload: z.boolean(),
     next_steps: z.array(nextStepSchema).min(3).max(8),
     image_plan: z.array(imagePlanItemSchema).min(4).max(8),
+    thumbnail_prompts: z.array(z.string()).min(1).max(6),
+    thumbnail_plan: z.array(thumbnailPlanItemSchema).min(1).max(6),
+    recommended_main_thumbnail: recommendedMainThumbnailSchema,
+    model_profile: modelProfileSchema,
+    visual_identity: visualIdentitySchema,
+    consistency_rules: z.array(z.string()).min(3).max(8),
+    reference_image_strategy: referenceImageStrategySchema,
   }
 }
 
@@ -128,6 +181,9 @@ function getListingOutputSchema(platform) {
         detail_page_image_prompts: z.array(z.string()).min(4).max(12),
         detail_page_image_prompt_instruction: z.string(),
         thumbnail_prompt: z.string(),
+        thumbnail_prompts: z.array(z.string()).min(1).max(6),
+        thumbnail_plan: z.array(thumbnailPlanItemSchema).min(1).max(6),
+        recommended_main_thumbnail: recommendedMainThumbnailSchema,
         thumbnail_prompt_instruction: z.string(),
         image_upload_instruction: z.string(),
         compliance_checklist: z.array(z.string()),
@@ -140,6 +196,10 @@ function getListingOutputSchema(platform) {
         disclaimer: z.string(),
         questions_for_seller: questionsForSellerSchema,
         detail_page_blueprint: detailPageBlueprintSchema,
+        model_profile: modelProfileSchema,
+        visual_identity: visualIdentitySchema,
+        consistency_rules: z.array(z.string()).min(3).max(8),
+        reference_image_strategy: referenceImageStrategySchema,
         ...getCommonFlowSchema(),
       })
 
@@ -153,6 +213,9 @@ function getListingOutputSchema(platform) {
         detail_page_image_prompts: z.array(z.string()).min(4).max(12),
         detail_page_image_prompt_instruction: z.string(),
         thumbnail_prompt: z.string(),
+        thumbnail_prompts: z.array(z.string()).min(1).max(6),
+        thumbnail_plan: z.array(thumbnailPlanItemSchema).min(1).max(6),
+        recommended_main_thumbnail: recommendedMainThumbnailSchema,
         thumbnail_prompt_instruction: z.string(),
         image_upload_instruction: z.string(),
         compliance_checklist: z.array(z.string()),
@@ -165,6 +228,10 @@ function getListingOutputSchema(platform) {
         disclaimer: z.string(),
         questions_for_seller: questionsForSellerSchema,
         detail_page_blueprint: detailPageBlueprintSchema,
+        model_profile: modelProfileSchema,
+        visual_identity: visualIdentitySchema,
+        consistency_rules: z.array(z.string()).min(3).max(8),
+        reference_image_strategy: referenceImageStrategySchema,
         ...getCommonFlowSchema(),
       })
 
@@ -180,6 +247,9 @@ function getListingOutputSchema(platform) {
         detail_page_image_prompts: z.array(z.string()).min(4).max(12),
         detail_page_image_prompt_instruction: z.string(),
         thumbnail_prompt: z.string(),
+        thumbnail_prompts: z.array(z.string()).min(1).max(6),
+        thumbnail_plan: z.array(thumbnailPlanItemSchema).min(1).max(6),
+        recommended_main_thumbnail: recommendedMainThumbnailSchema,
         thumbnail_prompt_instruction: z.string(),
         image_upload_instruction: z.string(),
         compliance_checklist: z.array(z.string()),
@@ -196,6 +266,10 @@ function getListingOutputSchema(platform) {
         disclaimer: z.string(),
         questions_for_seller: questionsForSellerSchema,
         detail_page_blueprint: detailPageBlueprintSchema,
+        model_profile: modelProfileSchema,
+        visual_identity: visualIdentitySchema,
+        consistency_rules: z.array(z.string()).min(3).max(8),
+        reference_image_strategy: referenceImageStrategySchema,
         ...getCommonFlowSchema(),
       })
   }
@@ -219,6 +293,99 @@ function getSourceContext(args, locale) {
     price: sanitizeText(args.source_price || ''),
     rawSummary: [args.source_title, args.source_description, args.source_specs].filter(Boolean).join(' / '),
     label: isKo ? '해외 소싱 상품' : 'cross-border sourced item',
+  }
+}
+
+function getRequestedThumbnailCount(args) {
+  const explicit = Number(args.desired_thumbnail_count)
+  if (Number.isInteger(explicit) && explicit > 0) return Math.min(explicit, 6)
+  if (Array.isArray(args.thumbnail_requests) && args.thumbnail_requests.length > 0) return Math.min(args.thumbnail_requests.length, 6)
+  return 1
+}
+
+function normalizeThumbnailRequest(item, index, locale) {
+  const isKo = locale === 'ko'
+  if (typeof item === 'string') {
+    const text = sanitizeText(item)
+    const lower = text.toLowerCase()
+    return {
+      role: text || (isKo ? `썸네일 ${index + 1}` : `thumbnail_${index + 1}`),
+      style: lower.includes('warm') || text.includes('따뜻') ? (isKo ? '따뜻하고 생활감 있는 커머스 스타일' : 'warm commercial lifestyle style') : (isKo ? '클린 커머스 스타일' : 'clean commercial style'),
+      mood: lower.includes('luxury') || text.includes('고급') ? (isKo ? '프리미엄' : 'premium') : lower.includes('warm') || text.includes('따뜻') ? (isKo ? '웜하고 친근함' : 'warm and friendly') : (isKo ? '명확하고 설득력 있게' : 'clear and persuasive'),
+      objective: text,
+      focus: text,
+      use_model: /model|lifestyle|착용|인물|모델/i.test(text),
+    }
+  }
+
+  return {
+    role: sanitizeText(item.role || '') || (isKo ? `썸네일 ${index + 1}` : `thumbnail_${index + 1}`),
+    style: sanitizeText(item.style || '') || (isKo ? '클린 커머스 스타일' : 'clean commercial style'),
+    mood: sanitizeText(item.mood || '') || (isKo ? '명확하고 설득력 있게' : 'clear and persuasive'),
+    objective: sanitizeText(item.objective || '') || sanitizeText(item.role || '') || (isKo ? '대표 썸네일 변주' : 'thumbnail variation'),
+    focus: sanitizeText(item.focus || '') || sanitizeText(item.objective || '') || sanitizeText(item.role || '') || (isKo ? '제품 중심' : 'product-led focus'),
+    use_model: Boolean(item.use_model),
+  }
+}
+
+function buildThumbnailRequests(args, locale) {
+  const requestedCount = getRequestedThumbnailCount(args)
+  const normalized = (args.thumbnail_requests || []).slice(0, 6).map((item, index) => normalizeThumbnailRequest(item, index, locale))
+
+  if (normalized.length > 0) return normalized.slice(0, requestedCount)
+
+  const isKo = locale === 'ko'
+  const style = sanitizeText(args.thumbnail_style || '') || (isKo ? '클린 커머스 스타일' : 'clean commercial style')
+  return Array.from({ length: requestedCount }, (_, index) => ({
+    role: index === 0 ? 'main_thumbnail' : isKo ? `thumbnail_variation_${index + 1}` : `thumbnail_variation_${index + 1}`,
+    style,
+    mood: isKo ? '명확하고 설득력 있게' : 'clear and persuasive',
+    objective: index === 0 ? (isKo ? '상품 식별성이 높은 메인 썸네일' : 'high-clarity main thumbnail') : isKo ? '메인 썸네일의 변주 컷' : 'variation of the main thumbnail',
+    focus: isKo ? '제품 중심' : 'product-led focus',
+    use_model: false,
+  }))
+}
+
+function buildVisualConsistencyToolkit({ args, product, points, audience, locale, thumbnailRequests }) {
+  const isKo = locale === 'ko'
+  const needsSharedModel = thumbnailRequests.some((item) => item.use_model) || /model|lifestyle|착용|모델|인물/i.test(String(args.thumbnail_style || ''))
+  const categoryHint = args.category === 'fashion' ? (isKo ? '착용 실루엣' : 'wearing silhouette') : args.category === 'beauty' ? (isKo ? '피부 표현과 손동작' : 'skin presentation and hand styling') : (isKo ? '생활 맥락' : 'lifestyle context')
+
+  return {
+    model_profile: {
+      usage_mode: needsSharedModel ? 'shared_if_used' : 'optional',
+      profile: needsSharedModel
+        ? isKo
+          ? `${audience}와 어울리는 한 명의 대표 모델 페르소나를 기준으로 유지하세요. 동일 인물 복제를 보장하려 하지 말고, 연령대 느낌·스타일링 톤·헤어 무드·포즈 에너지·손 연출을 비슷하게 맞추는 수준의 일관성 가이드로 사용하세요.`
+          : `Use one representative model persona that fits ${audience}. Do not promise exact identity cloning; treat this as guidance to keep age impression, styling tone, hair mood, pose energy, and hand styling feeling aligned across shots.`
+        : isKo
+          ? '기본은 제품 단독 컷 중심입니다. 모델은 필요할 때만 보조적으로 사용하고, 들어간다면 동일한 페르소나 느낌을 유지하세요.'
+          : 'Default to product-led shots. If a model is used, keep the same persona feeling across assets.' ,
+    },
+    visual_identity: {
+      summary: isKo
+        ? `${product} 이미지 세트는 ${points.slice(0, 2).join(', ')}를 중심으로, ${sanitizeText(args.thumbnail_style || args.description_tone || args.tone || '') || '깔끔하고 신뢰감 있는'} 톤으로 통일합니다.`
+        : `Keep the ${product} image set unified around ${points.slice(0, 2).join(', ')} with a ${sanitizeText(args.thumbnail_style || args.description_tone || args.tone || '') || 'clean, trustworthy'} tone.`,
+      cues: [
+        isKo ? '제품의 실제 형태·비율·핵심 파츠 우선 유지' : 'Preserve the real product shape, proportions, and key parts first',
+        isKo ? `${categoryHint}이(가) 필요하면 동일한 무드 보드처럼 반복 사용` : `Repeat ${categoryHint} cues like a shared mood board when relevant`,
+        isKo ? '배경, 조명, 색온도는 컷별 변주가 있어도 한 브랜드 세트처럼 연결' : 'Let background, lighting, and color temperature vary lightly while still feeling like one set',
+      ],
+    },
+    consistency_rules: [
+      isKo ? '실사 이미지가 있으면 모든 컷에서 그 제품 외형과 색을 최우선 참조하세요.' : 'If real product images exist, use them as the primary anchor for product shape and color in every shot.',
+      isKo ? '모델이 들어가는 썸네일과 상세 컷은 같은 사람을 복제하려 하지 말고, 같은 페르소나/스타일링 계열로 맞추세요.' : 'For model shots in thumbnails and detail images, avoid claiming the exact same person; align them to the same persona/styling family instead.',
+      isKo ? '썸네일은 CTR용 단순성, 상세 이미지는 설명력 중심으로 역할을 나누되 톤은 연결하세요.' : 'Separate roles clearly: thumbnails for CTR simplicity, detail images for explanation, while keeping the tone connected.',
+      isKo ? '모델 컷에서도 제품이 주인공이어야 하며, 손/포즈/구도는 제품 가시성을 해치지 않게 유지하세요.' : 'Even in model shots, keep the product as the hero and avoid poses or hands that reduce product clarity.',
+    ],
+    reference_image_strategy: {
+      priority: isKo ? '실제 상품 사진 우선, 그다음 동일 세트의 대표 썸네일/모델 컷을 상호 참조' : 'Prioritize real product photos first, then cross-reference the lead thumbnail/model cut from the same set.',
+      guidance: [
+        isKo ? '가능하면 같은 원본 상품 사진 묶음을 썸네일 생성과 상세 이미지 생성에 같이 업로드하세요.' : 'When possible, upload the same source product-photo set for both thumbnail and detail-image generation.',
+        isKo ? '모델 컷이 필요하면 먼저 한 장의 기준 컷을 만든 뒤 이후 프롬프트에서 그 컷의 분위기/스타일링을 재참조하세요.' : 'If model shots are needed, create one anchor shot first and reference its mood/styling in later prompts.',
+        isKo ? '완전한 동일 인물 보장은 어렵기 때문에 얼굴보다 헤어, 메이크업, 체형 느낌, 의상 톤, 손 연출 같은 재현 가능한 단서를 강조하세요.' : 'Exact same-person matching is difficult, so emphasize reproducible cues such as hair, makeup, body-type impression, wardrobe tone, and hand styling over facial identity claims.',
+      ],
+    },
   }
 }
 
@@ -391,7 +558,7 @@ function buildRequirementChecks(args, config, categoryConfig, sellingMode) {
         reason: isKo ? '메인 썸네일 방향을 정하면 스마트스토어 CTR 설계가 더 좋아집니다.' : 'A thumbnail direction helps optimize SmartStore CTR.',
         severity: 'recommended',
         source: 'platform',
-        present: hasMeaningfulValue(args.thumbnail_style),
+        present: hasMeaningfulValue(args.thumbnail_style) || hasMeaningfulValue(args.thumbnail_requests),
       },
     ],
   }
@@ -431,7 +598,73 @@ function buildRequirementChecks(args, config, categoryConfig, sellingMode) {
   return requirements
 }
 
-function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredMissing, sellingMode, points }) {
+function buildThumbnailOutputs({ args, product, audience, points, locale, consistencyToolkit }) {
+  const isKo = locale === 'ko'
+  const thumbnailRequests = buildThumbnailRequests(args, locale)
+  const platform = String(args.platform || '').toLowerCase()
+  const baseBackgroundRule = platform === 'amazon' ? 'pure white background' : 'clean e-commerce background'
+  const plan = thumbnailRequests.map((request, index) => {
+    const useModel = Boolean(request.use_model)
+    const modelRule = useModel
+      ? `use a ${consistencyToolkit.model_profile.usage_mode === 'shared_if_used' ? 'consistent-feeling recurring model persona' : 'natural model persona'} that matches ${audience}; keep the same styling family across thumbnail/detail shots without claiming exact identity cloning`
+      : 'no people, no hands unless essential for product understanding'
+    const backgroundRule = request.role === 'main_thumbnail' || /main|hero/i.test(request.role) ? baseBackgroundRule : useModel ? 'minimal lifestyle background with restrained props' : 'clean uncluttered commercial background'
+    const prompt = [
+      'Usage: Paste this in an image-capable GPT and upload real product photos together.',
+      `Please generate this image: ${request.role} thumbnail for ${product}, ${request.style}, ${request.mood}, objective: ${request.objective}, focus on ${request.focus}, ${backgroundRule}, bright commercial lighting, sharp realistic texture, preserve true product shape/colors/key parts, ${modelRule}, no text/logo/watermark, 4:5 vertical ratio, high resolution${args.thumbnail_style ? `, overall style note: ${sanitizeText(args.thumbnail_style)}` : ''}`,
+    ].join('\n')
+
+    return {
+      slot: index + 1,
+      role: request.role,
+      style: request.style,
+      mood: request.mood,
+      objective: request.objective,
+      focus: request.focus,
+      use_model: useModel,
+      prompt,
+    }
+  })
+
+  const recommended = plan.find((item) => /main|hero/i.test(item.role)) || plan[0]
+
+  return {
+    thumbnail_prompts: plan.map((item) => item.prompt),
+    thumbnail_plan: plan,
+    recommended_main_thumbnail: {
+      slot: recommended.slot,
+      role: recommended.role,
+      reason: isKo
+        ? '제품 식별성과 클릭 유도 균형이 가장 좋고, 상세 이미지 세트와 톤을 연결하기 쉬운 컷입니다.'
+        : 'This cut offers the best balance of product clarity and click appeal while staying easiest to align with the detail-image set.',
+    },
+    thumbnail_prompt: recommended.prompt,
+  }
+}
+
+function buildDetailPagePrompts({ args, product, audience, points, locale, sellingMode, consistencyToolkit }) {
+  const isKo = locale === 'ko'
+  const thumbnailRequests = buildThumbnailRequests(args, locale)
+  const modelShotRequested = thumbnailRequests.some((item) => item.use_model)
+  const modelGuidance = modelShotRequested
+    ? isKo
+      ? ` If a model/lifestyle cut is appropriate, reuse this shared persona guidance: ${consistencyToolkit.model_profile.profile}`
+      : ` If a model/lifestyle cut is appropriate, reuse this shared persona guidance: ${consistencyToolkit.model_profile.profile}`
+    : isKo
+      ? ' Keep the set primarily product-led; only use a model when it helps explain use or scale.'
+      : ' Keep the set primarily product-led; only use a model when it helps explain use or scale.'
+
+  return [
+    `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 1 (intro) for ${product}, clean Korean shopping detail style, clear headline area, product hero emphasized, high readability layout, no watermark.${modelGuidance}`,
+    `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 2 (${sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING ? 'localized source summary' : 'key benefits'}) for ${product}, visually explain ${points[0] || 'key benefit'} and ${points[1] || 'core feature'}, keep the same visual identity cues as the thumbnail set: ${consistencyToolkit.visual_identity.cues.join('; ')}.`,
+    `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 3 (${sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING ? 'source specs and options' : 'materials/spec'}) for ${product}, show realistic texture and components, infographic-friendly composition, no people unless product fit/scale genuinely requires it.${modelShotRequested ? ' If a model is used, match the thumbnail persona through styling tone, hair mood, and pose energy rather than claiming the exact same face.' : ''}`,
+    `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 4 (usage scene) for ${product}, practical daily-use context for ${audience}, clean lifestyle composition, product remains the main focus.${modelShotRequested ? ' Reuse the shared model persona feeling from the thumbnail plan if a person appears.' : ''}`,
+    `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 5 (${sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING ? 'compliance and pre-upload checks' : 'size/spec guide'}) for ${product}, clear measurement/spec visual hierarchy, ecommerce infographic style, visually consistent with the rest of the set.`,
+    `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 6 (trust/closing CTA) for ${product}, reassuring tone, purchase-driving composition, clean premium ecommerce style, close the set with the same overall mood as the recommended main thumbnail.`,
+  ]
+}
+
+function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredMissing, sellingMode, points, consistencyToolkit, thumbnailOutputs }) {
   const locale = config.locale
   const isKo = locale === 'ko'
   const criticalMissing = requiredMissing.filter((item) => item.severity === 'critical')
@@ -460,6 +693,13 @@ function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredM
       isKo
         ? '핵심 입력이 비어 있어 지금 업로드하면 누락 위험이 있습니다.'
         : 'Critical listing inputs are still missing, so uploading now risks omissions.'
+    )
+  }
+  if (thumbnailOutputs.thumbnail_plan.some((item) => item.use_model) && !args.image_analysis) {
+    warnings.push(
+      isKo
+        ? '모델 컷을 요청했지만 실물 이미지 기준점이 부족해 썸네일-상세 간 일관성이 흔들릴 수 있습니다.'
+        : 'Model-led cuts were requested, but without real product image anchors consistency between thumbnail and detail shots may drift.'
     )
   }
   if (sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING) {
@@ -678,7 +918,7 @@ function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredM
             : item.role === 'source_specs_check'
               ? [source.specs || source.title || (isKo ? '원상품 규격/옵션/구성품' : 'source specs/options/included items')]
               : item.role === 'usage_scene'
-                ? [sanitizeText(args.target_audience), product]
+                ? [sanitizeText(args.target_audience), product, ...(thumbnailOutputs.thumbnail_plan.some((thumb) => thumb.use_model) ? [isKo ? '썸네일과 같은 모델 페르소나 무드' : 'same model persona mood as thumbnail set'] : [])]
                 : item.role === 'spec_size'
                   ? mustIncludeImages.length > 0
                     ? mustIncludeImages.slice(0, 2)
@@ -695,11 +935,11 @@ function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredM
           ? 'Make it clear, practical, and friendly to item-specifics storytelling.'
           : sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
             ? isKo
-              ? '해외 원상품 정보를 그대로 복붙하지 말고, 국내 구매자 기준으로 번역/정리된 문맥으로 보여주세요.'
-              : 'Do not mirror the source listing verbatim; present it in a Korean-market-friendly context.'
+              ? `해외 원상품 정보를 그대로 복붙하지 말고, 국내 구매자 기준으로 번역/정리된 문맥으로 보여주세요. ${consistencyToolkit.consistency_rules[1]}`
+              : `Do not mirror the source listing verbatim; present it in a Korean-market-friendly context. ${consistencyToolkit.consistency_rules[1]}`
             : isKo
-              ? '국내 쇼핑몰 세로형 상세 흐름에 맞게 가독성을 우선하세요.'
-              : 'Prioritize readability in a marketplace-friendly sequence.',
+              ? `국내 쇼핑몰 세로형 상세 흐름에 맞게 가독성을 우선하세요. ${consistencyToolkit.consistency_rules[2]}`
+              : `Prioritize readability in a marketplace-friendly sequence. ${consistencyToolkit.consistency_rules[2]}`,
   }))
 
   return {
@@ -712,6 +952,8 @@ function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredM
     ready_to_upload: readyToUpload,
     next_steps: [...nextSteps.slice(0, 5)],
     image_plan: [...imagePlan, ...extraPlan].slice(0, 8),
+    ...thumbnailOutputs,
+    ...consistencyToolkit,
   }
 }
 
@@ -737,6 +979,12 @@ function buildQuestionsForSeller({ config, categoryQuestions, sellingMode }) {
           required: true,
           options: ['전문적이고 신뢰감 있게', '따뜻하고 친근하게', '트렌디하고 감각적으로', '심플하고 깔끔하게'],
         },
+        {
+          field: 'desired_thumbnail_count',
+          question: '썸네일은 몇 장 정도 기획할까요?',
+          required: false,
+          options: ['1장', '2장', '3장', '4장 이상'],
+        },
       ]
     : [
         { field: 'brand_name', question: 'Do you have a brand name? (Leave blank for unbranded)', required: false },
@@ -753,11 +1001,23 @@ function buildQuestionsForSeller({ config, categoryQuestions, sellingMode }) {
           required: true,
           options: ['Professional & trustworthy', 'Warm & friendly', 'Trendy & stylish', 'Simple & clean'],
         },
+        {
+          field: 'desired_thumbnail_count',
+          question: 'How many thumbnail concepts do you want planned?',
+          required: false,
+          options: ['1', '2', '3', '4+'],
+        },
       ]
 
   const ownProductOnly = isKo
-    ? [{ field: 'additional_images_info', question: '상세설명에 꼭 넣고 싶은 이미지가 있나요? (사이즈표, 성분표, 인증서 등)', required: false }]
-    : [{ field: 'additional_images_info', question: 'Any must-include images for the detail page (size chart, ingredient table, certificates, etc.)?', required: false }]
+    ? [
+        { field: 'additional_images_info', question: '상세설명에 꼭 넣고 싶은 이미지가 있나요? (사이즈표, 성분표, 인증서 등)', required: false },
+        { field: 'thumbnail_requests', question: '원하는 썸네일 역할/컷이 있나요? (예: 모델컷, 제품단독컷, 웜무드컷, 디테일컷)', required: false },
+      ]
+    : [
+        { field: 'additional_images_info', question: 'Any must-include images for the detail page (size chart, ingredient table, certificates, etc.)?', required: false },
+        { field: 'thumbnail_requests', question: 'Any specific thumbnail roles you want? (e.g. model cut, product-only cut, warm mood cut, detail cut)', required: false },
+      ]
 
   const sourcingQuestions = isKo
     ? [
@@ -767,6 +1027,7 @@ function buildQuestionsForSeller({ config, categoryQuestions, sellingMode }) {
         { field: 'source_specs', question: '원상품 옵션/사양/구성품 정보를 알려주세요', required: true },
         { field: 'origin_country', question: '제조국/원산지 정보가 확인되었나요?', required: true },
         { field: 'import_compliance_notes', question: '통관/인증/상표 관련 확인된 사항이 있나요?', required: false },
+        { field: 'thumbnail_requests', question: '썸네일은 어떤 역할로 나눌까요? (예: 메인 상품컷, 모델컷, 상세 디테일컷, 신뢰컷)', required: false },
       ]
     : [
         { field: 'source_marketplace', question: 'Which overseas marketplace are you sourcing from? (e.g. Taobao, 1688, Alibaba)', required: true },
@@ -775,10 +1036,11 @@ function buildQuestionsForSeller({ config, categoryQuestions, sellingMode }) {
         { field: 'source_specs', question: 'Share the source options/specs/included parts', required: true },
         { field: 'origin_country', question: 'Has the country of origin/manufacture been confirmed?', required: true },
         { field: 'import_compliance_notes', question: 'Any known customs/certification/trademark notes?', required: false },
+        { field: 'thumbnail_requests', question: 'How should the thumbnails be split by role? (e.g. main product cut, model cut, detail cut, trust cut)', required: false },
       ]
 
   return sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
-    ? [...sourcingQuestions, ...commonQuestions.slice(2, 4)]
+    ? [...sourcingQuestions, ...commonQuestions.slice(2, 5)]
     : [...commonQuestions, ...ownProductOnly, ...categoryQuestions]
 }
 
@@ -786,6 +1048,8 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
   const locale = config.locale
   const isKo = locale === 'ko'
   const source = getSourceContext(args, locale)
+  const consistencyToolkit = buildVisualConsistencyToolkit({ args, product, points, audience, locale, thumbnailRequests: buildThumbnailRequests(args, locale) })
+  const thumbnailOutputs = buildThumbnailOutputs({ args, product, audience, points, locale, consistencyToolkit })
   const detailPageCopy =
     sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
       ? isKo
@@ -798,31 +1062,27 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
   const sectionDescriptions = categoryConfig.sectionDescriptions[locale] || categoryConfig.sectionDescriptions.ko
   const categoryQuestions = categoryConfig.additionalQuestions[locale] || categoryConfig.additionalQuestions.ko
   const requiredMissing = buildRequirementChecks(args, config, categoryConfig, sellingMode)
-  const workflowOutputs = buildWorkflowOutputs({ args, product, config, categoryConfig, requiredMissing, sellingMode, points })
+  const workflowOutputs = buildWorkflowOutputs({ args, product, config, categoryConfig, requiredMissing, sellingMode, points, consistencyToolkit, thumbnailOutputs })
 
   const common = {
     detail_page_copy: detailPageCopy,
-    detail_page_image_prompts: [
-      `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 1 (intro) for ${product}, clean Korean smartstore style, clear headline area, product hero emphasized, high readability layout, no watermark.`,
-      `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 2 (${sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING ? 'localized source summary' : 'key benefits'}) for ${product}, visually explain: ${points[0] || 'key benefit'}, ${points[1] || 'core feature'}, clean white background, Korean shopping detail page style.`,
-      `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 3 (${sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING ? 'source specs and options' : 'materials/spec'}) for ${product}, show realistic texture and components, infographic-friendly composition, no people unless product requires model shot.`,
-      `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 4 (usage scene) for ${product}, practical daily-use context for ${audience}, clean lifestyle composition, product remains the main focus.`,
-      `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 5 (${sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING ? 'compliance and pre-upload checks' : 'size/spec guide'}) for ${product}, clear measurement/spec visual hierarchy, ecommerce infographic style.`,
-      `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 6 (trust/closing CTA) for ${product}, reassuring tone, purchase-driving composition, clean premium ecommerce style.`,
-    ],
+    detail_page_image_prompts: buildDetailPagePrompts({ args, product, audience, points, locale, sellingMode, consistencyToolkit }),
     detail_page_image_prompt_instruction:
       locale === 'ko'
-        ? '🚨 중요: 모지 채팅방을 나가서 이미지 생성 가능한 GPT 채팅방 또는 나노바나나로 이동하세요. 아래 상세 이미지 프롬프트를 순서대로 붙여넣고, 원본 상품사진도 반드시 함께 업로드해 길쭉한 상세페이지 섹션 이미지를 생성하세요.'
-        : 'Important: Move to an image-capable GPT chat or image tool. Paste the detail image prompts in order and upload original product photos together to generate long vertical detail-page section images.',
-    thumbnail_prompt: `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Studio e-commerce product photo of ${product}, single product centered and occupying about 85% of frame, pure white background, bright softbox lighting, realistic texture and true-to-product shape/colors, no people, no hands, no extra props, no text/logo/watermark, Korean shopping mall thumbnail style, 4:5 vertical ratio, high resolution`,
+        ? '🚨 중요: 모지 채팅방을 나가서 이미지 생성 가능한 GPT 채팅방 또는 나노바나나로 이동하세요. 아래 상세 이미지 프롬프트를 순서대로 붙여넣고, 원본 상품사진도 반드시 함께 업로드해 길쭉한 상세페이지 섹션 이미지를 생성하세요. 모델 컷이 있다면 같은 기준 컷/참조 이미지를 함께 재사용해 일관성을 높이세요.'
+        : 'Important: Move to an image-capable GPT chat or image tool. Paste the detail image prompts in order and upload original product photos together to generate long vertical detail-page section images. If model shots are used, keep reusing the same anchor reference cut for better consistency.',
+    thumbnail_prompt: thumbnailOutputs.thumbnail_prompt,
+    thumbnail_prompts: thumbnailOutputs.thumbnail_prompts,
+    thumbnail_plan: thumbnailOutputs.thumbnail_plan,
+    recommended_main_thumbnail: thumbnailOutputs.recommended_main_thumbnail,
     thumbnail_prompt_instruction:
       locale === 'ko'
         ? '🚨 중요: 모지 채팅방을 나가서 이미지 생성 가능한 GPT 채팅방 또는 나노바나나로 이동하세요. 📌 아래 프롬프트를 그대로 붙여넣고, 원본 상품사진도 꼭 함께 업로드해 이미지를 만들어 주세요.'
         : 'Create an image by following the prompt below. Paste this prompt into another GPT image-generation chat or an image tool (e.g., Nanobanana).',
     image_upload_instruction:
       locale === 'ko'
-        ? '복사해서 고객에게 전달하세요: "상세설명 프롬프트를 ChatGPT에 등록할 때 판매상품의 실사 이미지도 함께 업로드해야 제품 정합성이 높아집니다. 상품 등록 시 원본 상품 이미지를 함께 업로드하고, 아래 썸네일 프롬프트로 생성한 대표 이미지를 메인 썸네일로 설정해 주세요."'
-        : 'Copy and send to your customer: "For better product fidelity, upload real product photos together when you use the detail prompt in ChatGPT. When creating the listing, upload the original product images and set the generated thumbnail (from the prompt below) as the main image."',
+        ? '복사해서 고객에게 전달하세요: "상세설명 프롬프트와 썸네일 프롬프트를 사용할 때 판매상품의 실사 이미지도 함께 업로드해야 제품 정합성이 높아집니다. 가능하면 같은 원본 이미지 세트를 썸네일/상세 생성에 공통으로 쓰고, 원본 상품 이미지를 등록용으로도 함께 업로드하세요. 아래 추천 메인 썸네일 프롬프트로 생성한 이미지를 메인 썸네일로 설정해 주세요."'
+        : 'Copy and send to your customer: "For better product fidelity, upload real product photos together when you use the detail and thumbnail prompts. If possible, reuse the same source image set across thumbnail and detail generation, upload the original product images for the listing as well, and set the image generated from the recommended main thumbnail prompt as the main thumbnail."',
     compliance_checklist: [...(config.complianceChecklist || []), ...(categoryConfig.complianceExtras[locale] || categoryConfig.complianceExtras.ko)],
     competitive_edge:
       sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
@@ -847,6 +1107,7 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
             ? `${product}는 ${categoryConfig.label[config.locale] || categoryConfig.label.ko} 카테고리이며, 핵심 셀링포인트는 ${points.slice(0, 2).join(', ')}입니다.`
             : `${product} belongs to ${categoryConfig.label[config.locale] || categoryConfig.label.en} category. Key selling points: ${points.slice(0, 2).join(', ')}.`,
     },
+    ...consistencyToolkit,
     ...workflowOutputs,
   }
 
@@ -962,15 +1223,24 @@ export async function runListingCopy(args) {
     `각 섹션 설명: ${JSON.stringify(categoryConfig.sectionDescriptions[locale] || categoryConfig.sectionDescriptions.ko)}`,
     'detail_page_copy: 상세페이지에 바로 사용할 수 있는 긴 카피를 작성하라. 구매자의 불안을 해소하고, 핵심 셀링포인트를 시각적으로 구분되게 구성하라.',
     'detail_page_image_prompts: 한국 온라인 쇼핑몰 상세페이지용 길쭉한(세로형) 섹션 이미지 프롬프트를 4~12개 작성하라. 각 프롬프트는 반드시 2줄 이상으로 작성하고, 첫 줄은 사용 안내 문구(예: "Usage: Paste this in an image-capable GPT and upload real product photos together.")를 넣고 둘째 줄은 반드시 "Please generate this image:"로 시작하라. 섹션별 역할(인트로/핵심특징/소재·스펙/사용장면/사이즈·가이드/마무리CTA)을 반영하라.',
+    'detail_page_image_prompts가 모델/라이프스타일 컷을 포함하는 경우, thumbnail_plan/model_profile/visual_identity/consistency_rules와 같은 일관성 가이드를 재사용하라. 단, 완전 동일 인물 보장을 약속하지 말고 같은 페르소나/스타일링 계열을 유지하는 수준으로 표현하라.',
     'detail_page_image_prompt_instruction: 사용자가 모지 채팅방 밖(일반 GPT 이미지 채팅/나노바나나)에서 원본 상품사진과 함께 위 프롬프트들을 순서대로 사용하도록 안내하는 문장을 작성하라.',
-    'thumbnail_prompt: 이 상품의 메인 썸네일 이미지를 생성하기 위한 DALL-E 프롬프트를 작성하라. 프롬프트는 영어로 작성하라.',
-    'thumbnail_prompt는 2줄로 작성하고, 첫 줄은 사용 안내(Usage: Paste this in an image-capable GPT and upload real product photos together.)를 넣고 둘째 줄은 반드시 "Please generate this image:"로 시작하라.',
-    'thumbnail_prompt는 CTR 중심 썸네일 기준으로 작성: single product centered, product fills 80~90% frame, clean white background, bright commercial lighting, sharp focus, minimal composition, 4:5 ratio, high resolution.',
-    '기본값으로 사람/모델/손/불필요 소품/배경 연출을 넣지 마라. (사용자가 명시적으로 요청한 경우만 허용)',
+    'thumbnail_prompts: 이 상품의 썸네일 이미지 프롬프트를 1~6개 배열로 작성하라. 각 프롬프트는 영어로, 2줄 구조로 작성하고 첫 줄은 사용 안내, 둘째 줄은 반드시 "Please generate this image:"로 시작하라.',
+    'thumbnail_plan: thumbnail_prompts와 같은 길이의 구조화 배열을 작성하라. 각 항목은 slot, role, style, mood, objective, focus, use_model, prompt를 포함한다.',
+    'recommended_main_thumbnail: slot, role, reason 구조로 작성하라. 메인 등록용으로 가장 적합한 썸네일을 지정하라.',
+    'thumbnail_prompt: 기존 호환성을 위해 recommended_main_thumbnail에 해당하는 prompt 하나를 그대로 넣어라.',
+    'thumbnail_prompt는 thumbnail_prompts[recommended_main_thumbnail.slot - 1]와 정렬되어야 한다.',
+    'thumbnail_prompt_instruction: 메인 프롬프트뿐 아니라 thumbnail_prompts 전체를 다른 이미지 생성 GPT/툴에서 쓰도록 안내하는 문장이어야 한다.',
+    'thumbnail_prompt는 CTR 중심 썸네일 기준으로 작성: single product centered, product fills 80~90% frame, clean white/commercial background, bright commercial lighting, sharp focus, minimal composition, 4:5 ratio, high resolution.',
+    '기본값으로 사람/모델/손/불필요 소품/배경 연출을 넣지 마라. 사용자가 thumbnail_requests 등으로 명시적으로 요청한 경우만 모델/라이프스타일 컷을 허용한다.',
     '상품 정합성이 최우선: image_analysis, product_details, must_include_images에 나온 제품 형태/색상/핵심 파츠를 유지하고 다른 제품처럼 바꾸지 마라.',
-    '브랜드명, 텍스트 오버레이, 워터마크, 타사 로고는 thumbnail_prompt에 넣지 마라.',
+    '브랜드명, 텍스트 오버레이, 워터마크, 타사 로고는 thumbnail prompt에 넣지 마라.',
+    'model_profile: usage_mode(none/optional/shared_if_used)와 profile 문자열을 작성하라. 동일 인물 복제 보장이 아니라 일관성 가이드를 설명하라.',
+    'visual_identity: summary와 cues[]를 작성하라. 썸네일/상세 전반에 공통 적용할 톤, 조명, 스타일링, 배경, 촬영 무드 힌트를 정리하라.',
+    'consistency_rules: 3~8개 배열로 작성하라. 썸네일과 상세 이미지 사이 제품/모델/무드 일관성을 위한 실용적 규칙을 제안하라.',
+    'reference_image_strategy: priority와 guidance[]를 작성하라. 실사 이미지, 기준 썸네일 컷, 모델 컷 등을 어떤 순서로 참조하면 좋은지 설명하라.',
     `thumbnail_prompt_instruction: 항상 다음 문구를 사용: "${thumbnailInstruction}"`,
-    `image_upload_instruction: 고객에게 그대로 전달할 복붙 문장을 작성하라. 의미는 반드시 다음을 포함: (1) 상세설명/썸네일 생성 프롬프트를 사용할 때 판매상품의 실사 이미지를 함께 업로드해야 정확도가 올라간다, (2) 원본 등록 이미지도 함께 업로드한다, (3) thumbnail_prompt로 생성한 이미지를 메인 썸네일로 설정한다. 언어는 ${locale === 'ko' ? '한국어' : 'English'}로 작성하라.`,
+    `image_upload_instruction: 고객에게 그대로 전달할 복붙 문장을 작성하라. 의미는 반드시 다음을 포함: (1) 상세설명/썸네일 생성 프롬프트를 사용할 때 판매상품의 실사 이미지를 함께 업로드해야 정확도가 올라간다, (2) 가능하면 같은 원본 이미지 세트를 썸네일과 상세 생성에 공통 사용한다, (3) 원본 등록 이미지도 함께 업로드한다, (4) thumbnail_prompt로 생성한 이미지를 메인 썸네일로 설정한다. 언어는 ${locale === 'ko' ? '한국어' : 'English'}로 작성하라.`,
     `compliance_checklist: 다음 항목 중 이 상품에 해당하는 것을 선별하여 포함하라: ${JSON.stringify([
       ...(config.complianceChecklist || []),
       ...(categoryConfig.complianceExtras[locale] || categoryConfig.complianceExtras.ko),
@@ -987,9 +1257,11 @@ export async function runListingCopy(args) {
     'ready_to_upload: critical required_missing이 없으면 true, 있으면 false. cross_border_sourcing에서는 번역/수입표기/핵심 source spec이 비었으면 false여야 한다.',
     'next_steps: 셀러가 다음에 해야 할 일을 순서대로 배열로 작성하라. 각 항목은 step, action, status(pending/recommended/completed), reason을 포함한다. selling_mode에 따라 흐름이 달라야 한다.',
     'image_plan: 이미지 실행 계획을 4~8개 슬롯으로 작성하라. 각 항목은 slot, role, objective, must_show[], notes를 포함한다. selling_mode에 따라 own_product는 일반 직접판매 흐름, cross_border_sourcing은 원상품 해석/국문 요약/리스크 확인 흐름을 반영하라.',
-    'image_analysis 필드가 제공된 경우, 해당 텍스트를 상품 외형/디자인 정보로 활용하여 더 정확한 카피와 썸네일 프롬프트를 작성하라.',
+    'image_analysis 필드가 제공된 경우, 해당 텍스트를 상품 외형/디자인 정보로 활용하여 더 정확한 카피와 이미지 프롬프트를 작성하라.',
     'is_imported가 true이거나 selling_mode가 cross_border_sourcing이면 수입 상품 관련 필수 표기사항을 compliance_checklist에 반드시 포함하라.',
-    'thumbnail_style이 제공되면 해당 스타일을 썸네일 프롬프트에 반영하라. 단, 스타일보다 제품 식별성/형태 보존을 우선하라.',
+    'thumbnail_style이 제공되면 썸네일 프롬프트 전반에 반영하라. 단, 스타일보다 제품 식별성/형태 보존을 우선하라.',
+    'desired_thumbnail_count가 제공되면 해당 수에 맞춰 thumbnail_prompts/thumbnail_plan을 생성하라.',
+    'thumbnail_requests가 제공되면 role/style/mood/objective/focus/use_model에 반영하라. 문자열 배열이면 각 문자열을 개별 썸네일 요청으로 해석하라.',
     'description_tone이 제공되면 detail_page_copy의 톤을 해당 지시에 맞춰 조정하라.',
     'must_include_images가 제공되면 상세페이지 구성에서 해당 이미지들이 어디에 배치되면 좋을지 detail_page_copy 안에 [이미지 삽입 위치: 설명] 형태로 표시하라.',
     '반드시 JSON object만 반환하라. Return only a JSON object.',
