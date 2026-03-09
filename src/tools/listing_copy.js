@@ -28,6 +28,20 @@ const questionsForSellerSchema = z.array(
   })
 )
 
+const clarificationPointSchema = z.object({
+  field: z.string(),
+  question: z.string(),
+  why_it_matters: z.string(),
+  suggested_options: z.array(z.string()).optional(),
+})
+
+const draftAssumptionSchema = z.object({
+  field: z.string(),
+  assumed_value: z.string(),
+  confidence: z.enum(['low', 'medium', 'high']),
+  rationale: z.string(),
+})
+
 const detailPageBlueprintSchema = z.object({
   recommended_sections: z.array(
     z.object({
@@ -159,6 +173,8 @@ function getCommonFlowSchema() {
     ready_to_upload: z.boolean(),
     next_steps: z.array(nextStepSchema).min(3).max(8),
     image_plan: z.array(imagePlanItemSchema).min(4).max(8),
+    draft_assumptions: z.array(draftAssumptionSchema).min(3).max(8),
+    clarification_points: z.array(clarificationPointSchema).max(3),
     thumbnail_prompts: z.array(z.string()).min(1).max(6),
     thumbnail_plan: z.array(thumbnailPlanItemSchema).min(1).max(6),
     recommended_main_thumbnail: recommendedMainThumbnailSchema,
@@ -195,6 +211,8 @@ function getListingOutputSchema(platform) {
         }),
         disclaimer: z.string(),
         questions_for_seller: questionsForSellerSchema,
+        clarification_points: z.array(clarificationPointSchema).max(3),
+        draft_assumptions: z.array(draftAssumptionSchema).min(3).max(8),
         detail_page_blueprint: detailPageBlueprintSchema,
         model_profile: modelProfileSchema,
         visual_identity: visualIdentitySchema,
@@ -227,6 +245,8 @@ function getListingOutputSchema(platform) {
         }),
         disclaimer: z.string(),
         questions_for_seller: questionsForSellerSchema,
+        clarification_points: z.array(clarificationPointSchema).max(3),
+        draft_assumptions: z.array(draftAssumptionSchema).min(3).max(8),
         detail_page_blueprint: detailPageBlueprintSchema,
         model_profile: modelProfileSchema,
         visual_identity: visualIdentitySchema,
@@ -265,6 +285,8 @@ function getListingOutputSchema(platform) {
         }),
         disclaimer: z.string(),
         questions_for_seller: questionsForSellerSchema,
+        clarification_points: z.array(clarificationPointSchema).max(3),
+        draft_assumptions: z.array(draftAssumptionSchema).min(3).max(8),
         detail_page_blueprint: detailPageBlueprintSchema,
         model_profile: modelProfileSchema,
         visual_identity: visualIdentitySchema,
@@ -375,7 +397,7 @@ function buildVisualConsistencyToolkit({ args, product, points, audience, locale
     consistency_rules: [
       isKo ? '실사 이미지가 있으면 모든 컷에서 그 제품 외형과 색을 최우선 참조하세요.' : 'If real product images exist, use them as the primary anchor for product shape and color in every shot.',
       isKo ? '모델이 들어가는 썸네일과 상세 컷은 같은 사람을 복제하려 하지 말고, 같은 페르소나/스타일링 계열로 맞추세요.' : 'For model shots in thumbnails and detail images, avoid claiming the exact same person; align them to the same persona/styling family instead.',
-      isKo ? '썸네일은 CTR용 단순성, 상세 이미지는 설명력 중심으로 역할을 나누되 톤은 연결하세요.' : 'Separate roles clearly: thumbnails for CTR simplicity, detail images for explanation, while keeping the tone connected.',
+      isKo ? '썸네일은 단순한 대표성, 상세 이미지는 설명력 중심으로 역할을 나누되 톤은 연결하세요.' : 'Separate roles clearly: thumbnails for simple product recognition, detail images for explanation, while keeping the tone connected.',
       isKo ? '모델 컷에서도 제품이 주인공이어야 하며, 손/포즈/구도는 제품 가시성을 해치지 않게 유지하세요.' : 'Even in model shots, keep the product as the hero and avoid poses or hands that reduce product clarity.',
     ],
     reference_image_strategy: {
@@ -555,7 +577,7 @@ function buildRequirementChecks(args, config, categoryConfig, sellingMode) {
     smartstore: [
       {
         field: 'thumbnail_style',
-        reason: isKo ? '메인 썸네일 방향을 정하면 스마트스토어 CTR 설계가 더 좋아집니다.' : 'A thumbnail direction helps optimize SmartStore CTR.',
+        reason: isKo ? '메인 썸네일 방향을 정하면 썸네일 설계가 더 또렷해집니다.' : 'A thumbnail direction makes the image plan more consistent.',
         severity: 'recommended',
         source: 'platform',
         present: hasMeaningfulValue(args.thumbnail_style) || hasMeaningfulValue(args.thumbnail_requests),
@@ -635,8 +657,8 @@ function buildThumbnailOutputs({ args, product, audience, points, locale, consis
       slot: recommended.slot,
       role: recommended.role,
       reason: isKo
-        ? '제품 식별성과 클릭 유도 균형이 가장 좋고, 상세 이미지 세트와 톤을 연결하기 쉬운 컷입니다.'
-        : 'This cut offers the best balance of product clarity and click appeal while staying easiest to align with the detail-image set.',
+        ? '제품 식별성과 활용 범위의 균형이 가장 좋아 기본 대표컷으로 쓰기 쉽습니다.'
+        : 'This cut gives the clearest all-purpose product representation for a default main image.',
     },
     thumbnail_prompt: recommended.prompt,
   }
@@ -660,8 +682,123 @@ function buildDetailPagePrompts({ args, product, audience, points, locale, selli
     `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 3 (${sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING ? 'source specs and options' : 'materials/spec'}) for ${product}, show realistic texture and components, infographic-friendly composition, no people unless product fit/scale genuinely requires it.${modelShotRequested ? ' If a model is used, match the thumbnail persona through styling tone, hair mood, and pose energy rather than claiming the exact same face.' : ''}`,
     `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 4 (usage scene) for ${product}, practical daily-use context for ${audience}, clean lifestyle composition, product remains the main focus.${modelShotRequested ? ' Reuse the shared model persona feeling from the thumbnail plan if a person appears.' : ''}`,
     `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 5 (${sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING ? 'compliance and pre-upload checks' : 'size/spec guide'}) for ${product}, clear measurement/spec visual hierarchy, ecommerce infographic style, visually consistent with the rest of the set.`,
-    `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 6 (trust/closing CTA) for ${product}, reassuring tone, purchase-driving composition, clean premium ecommerce style, close the set with the same overall mood as the recommended main thumbnail.`,
+    `Usage: Paste this in an image-capable GPT and upload real product photos together.\nPlease generate this image: Long vertical ecommerce detail image section 6 (trust/closing CTA) for ${product}, reassuring tone, clean premium ecommerce style, close the set with the same overall mood as the recommended main thumbnail.`,
   ]
+}
+
+function buildDraftAssumptions({ args, locale, sellingMode, thumbnailOutputs }) {
+  const isKo = locale === 'ko'
+  const thumbnailPlan = thumbnailOutputs.thumbnail_plan || []
+  const modelUsage = thumbnailPlan.some((item) => item.use_model)
+  const textOverlay = String(args.platform || '').toLowerCase() === 'amazon' ? 'no' : 'not specified, so omitted in default draft'
+
+  const items = [
+    {
+      field: 'thumbnail_text_overlay',
+      assumed_value: textOverlay,
+      confidence: 'medium',
+      rationale: isKo
+        ? '플랫폼 제한과 기본 깔끔한 대표컷 우선 원칙에 맞춰 텍스트 오버레이 없이 설계했습니다.'
+        : 'The default draft prioritizes clean marketplace-friendly images without text overlay.',
+    },
+    {
+      field: 'thumbnail_model_usage',
+      assumed_value: modelUsage ? 'use model/persona in requested cuts only' : 'product-only default',
+      confidence: modelUsage ? 'high' : 'medium',
+      rationale: isKo
+        ? '모델은 사용자가 명시한 경우에만 포함하고, 그 외에는 제품 단독 중심으로 잡았습니다.'
+        : 'Model usage is limited to explicitly requested cuts; otherwise the draft stays product-led.',
+    },
+    {
+      field: 'detail_page_tone',
+      assumed_value: sanitizeText(args.description_tone || args.tone || '') || (isKo ? '신뢰감 있고 또렷한 톤' : 'clear, trustworthy tone'),
+      confidence: 'high',
+      rationale: isKo ? '입력된 톤 지시를 기본 상세페이지 톤으로 반영했습니다.' : 'The provided tone guidance was used as the default detail-page direction.',
+    },
+    {
+      field: 'detail_page_section_depth',
+      assumed_value: isKo ? '기본 실무형 구성으로 전개' : 'practical default section flow',
+      confidence: 'medium',
+      rationale: isKo
+        ? '추가 길이 지시가 없어서 핵심 정보 위주로 바로 사용할 수 있는 기본 구성을 잡았습니다.'
+        : 'Without extra direction, the draft uses a practical section flow focused on usable essentials.',
+    },
+    {
+      field: 'image_source_anchor',
+      assumed_value: hasMeaningfulValue(args.image_analysis) ? 'real product images should anchor final generation' : 'draft made without real image anchor yet',
+      confidence: hasMeaningfulValue(args.image_analysis) ? 'high' : 'low',
+      rationale: isKo
+        ? '실사 이미지 유무가 제품 정합성과 썸네일/상세 일관성에 가장 크게 영향을 줍니다.'
+        : 'Real product imagery has the biggest effect on product fidelity and cross-asset consistency.',
+    },
+  ]
+
+  if (sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING) {
+    items.push({
+      field: 'source_localization_scope',
+      assumed_value: isKo ? '원문 기반 핵심 스펙 요약 중심' : 'localized summary based on provided source info',
+      confidence: 'medium',
+      rationale: isKo
+        ? '제공된 원상품 정보만 바탕으로 과장 없이 국내 판매용 요약으로 재구성했습니다.'
+        : 'The draft localizes only the source information provided, without inventing extra specifics.',
+    })
+  }
+
+  return items.slice(0, 8)
+}
+
+function buildClarificationPoints({ args, locale, sellingMode, thumbnailOutputs }) {
+  const isKo = locale === 'ko'
+  const items = []
+  const platform = String(args.platform || '').toLowerCase()
+  const usesModel = thumbnailOutputs.thumbnail_plan.some((item) => item.use_model)
+
+  if (!hasMeaningfulValue(args.image_analysis)) {
+    items.push({
+      field: 'image_analysis',
+      question: isKo ? '실제 상품 사진이나 외형 설명을 더 줄 수 있나요?' : 'Can you share real product photos or a clearer visual description?',
+      why_it_matters: isKo ? '제품 정합성과 썸네일/상세 일관성에 가장 큰 영향을 줍니다.' : 'This most strongly affects product fidelity and cross-image consistency.',
+      suggested_options: isKo ? ['실사 사진 업로드', '대표컷 1~3장 설명', '지금은 초안만 진행'] : ['Upload product photos', 'Describe 1-3 reference shots', 'Keep it as a draft for now'],
+    })
+  }
+
+  if (!hasMeaningfulValue(args.thumbnail_requests) && !hasMeaningfulValue(args.thumbnail_style)) {
+    items.push({
+      field: 'thumbnail_direction',
+      question: isKo ? '썸네일은 제품 단독 / 모델컷 / 라이프스타일 중 어떤 방향이 좋나요?' : 'Which thumbnail direction do you prefer: product-only, model-led, or lifestyle?',
+      why_it_matters: isKo ? '썸네일 톤과 상세 이미지 구성 전체가 달라집니다.' : 'This changes the visual direction of both the thumbnail and the detail set.',
+      suggested_options: isKo ? ['제품 단독', '모델컷 일부 포함', '생활 연출 중심'] : ['Product-only', 'Some model shots', 'Lifestyle-led'],
+    })
+  }
+
+  if (!hasMeaningfulValue(args.description_tone) && !hasMeaningfulValue(args.tone)) {
+    items.push({
+      field: 'copy_tone',
+      question: isKo ? '카피 톤은 신뢰형 / 감성형 / 트렌디형 중 어느 쪽이 좋나요?' : 'Which copy tone do you want: trustworthy, warm, or trendy?',
+      why_it_matters: isKo ? '상세페이지 문장 톤과 헤드라인 스타일이 달라집니다.' : 'This changes the detail-page voice and headline style.',
+      suggested_options: isKo ? ['신뢰형', '감성형', '트렌디형'] : ['Trustworthy', 'Warm', 'Trendy'],
+    })
+  }
+
+  if (sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING && !hasMeaningfulValue(args.source_specs)) {
+    items.unshift({
+      field: 'source_specs',
+      question: isKo ? '원상품의 옵션/규격/구성품을 조금만 더 알려줄 수 있나요?' : 'Can you share a bit more about the source product options/specs/included parts?',
+      why_it_matters: isKo ? '번역 정확도와 국내 판매용 상세 설계 품질에 직접 영향을 줍니다.' : 'This directly affects localization accuracy and the quality of the resale draft.',
+      suggested_options: isKo ? ['옵션명만 전달', '원문 스펙 복붙', '링크 공유'] : ['List option names', 'Paste source specs', 'Share URL'],
+    })
+  }
+
+  if (platform === 'amazon' && !usesModel) {
+    items.push({
+      field: 'amazon_main_image_policy',
+      question: isKo ? 'Amazon 메인 이미지는 화이트 배경 제품 단독으로 유지할까요?' : 'Should the Amazon main image stay product-only on white background?',
+      why_it_matters: isKo ? '메인 이미지 정책 적합성과 썸네일 기획에 바로 연결됩니다.' : 'This directly affects policy fit and thumbnail planning.',
+      suggested_options: isKo ? ['네, 기본안 유지', '서브컷만 라이프스타일 추가'] : ['Yes, keep default', 'Lifestyle only in secondary cuts'],
+    })
+  }
+
+  return items.slice(0, 3)
 }
 
 function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredMissing, sellingMode, points, consistencyToolkit, thumbnailOutputs }) {
@@ -798,8 +935,8 @@ function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredM
             ? `다음 필드를 먼저 채우세요: ${[...missingFields].join(', ')}`
             : `Complete these fields first: ${[...missingFields].join(', ')}`
           : isKo
-            ? '대표 이미지가 클릭률과 상품 인지에 직접 영향을 줍니다.'
-            : 'The main image directly affects click-through and product recognition.',
+            ? '대표 이미지가 상품 인지와 기본 리스트 품질에 직접 영향을 줍니다.'
+            : 'The main image strongly affects product recognition and listing quality.',
     })
     nextSteps.push({
       step: 3,
@@ -892,7 +1029,7 @@ function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredM
           {
             role: 'trust_closing',
             sectionType: categorySections[categorySections.length - 1] || 'closing',
-            objective: isKo ? '인증/안심/마무리 구매 유도' : 'Close with trust and buying confidence',
+            objective: isKo ? '인증/안심/마무리 구매 판단 지원' : 'Close with trust and purchase-confidence support',
           },
         ]
 
@@ -952,96 +1089,49 @@ function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredM
     ready_to_upload: readyToUpload,
     next_steps: [...nextSteps.slice(0, 5)],
     image_plan: [...imagePlan, ...extraPlan].slice(0, 8),
+    draft_assumptions: buildDraftAssumptions({ args, locale, sellingMode, thumbnailOutputs }),
+    clarification_points: buildClarificationPoints({ args, locale, sellingMode, thumbnailOutputs }),
     ...thumbnailOutputs,
     ...consistencyToolkit,
   }
 }
 
-function buildQuestionsForSeller({ config, categoryQuestions, sellingMode }) {
+function buildQuestionsForSeller({ config, categoryQuestions, sellingMode, requiredMissing, clarificationPoints }) {
   const isKo = config.locale === 'ko'
-  const commonQuestions = isKo
+  const prioritizedFields = new Set((requiredMissing || []).filter((item) => item.severity === 'critical').map((item) => item.field))
+  const clarificationMap = new Map((clarificationPoints || []).map((item) => [item.field, item]))
+
+  const questionBank = sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
     ? [
-        { field: 'brand_name', question: '브랜드명이 있나요? (없으면 무브랜드로 진행합니다)', required: false },
-        {
-          field: 'highlight_phrase',
-          question: '특히 강조하고 싶은 문구가 있나요? (예: "국내 생산", "무형광 원단")',
-          required: false,
-        },
-        {
-          field: 'detail_length',
-          question: '상세설명 길이는 어느 정도가 좋을까요?',
-          required: true,
-          options: ['간단하게 (4~5섹션)', '보통 (6~8섹션)', '상세하게 (9~12섹션)'],
-        },
-        {
-          field: 'mood',
-          question: '어떤 분위기가 좋을까요?',
-          required: true,
-          options: ['전문적이고 신뢰감 있게', '따뜻하고 친근하게', '트렌디하고 감각적으로', '심플하고 깔끔하게'],
-        },
-        {
-          field: 'desired_thumbnail_count',
-          question: '썸네일은 몇 장 정도 기획할까요?',
-          required: false,
-          options: ['1장', '2장', '3장', '4장 이상'],
-        },
+        { field: 'source_specs', question: isKo ? '원상품 옵션/규격/구성품을 알려주세요' : 'Share the source options/specs/included parts', required: prioritizedFields.has('source_specs') },
+        { field: 'origin_country', question: isKo ? '제조국/원산지 정보가 확인되었나요?' : 'Has the country of origin/manufacture been confirmed?', required: prioritizedFields.has('origin_country') },
+        { field: 'source_url', question: isKo ? '원상품 링크가 있나요?' : 'Do you have the source listing URL?', required: prioritizedFields.has('source_url') },
+        { field: 'thumbnail_direction', question: isKo ? '썸네일은 제품 단독 / 모델컷 / 라이프스타일 중 어떤 방향이 좋나요?' : 'Should the thumbnails be product-only, model-led, or lifestyle-led?', required: false, options: isKo ? ['제품 단독', '모델컷 일부 포함', '생활 연출 중심'] : ['Product-only', 'Some model shots', 'Lifestyle-led'] },
+        { field: 'mood', question: isKo ? '카피/이미지 톤은 어떤 쪽이 좋나요?' : 'What overall copy/image tone do you prefer?', required: false, options: isKo ? ['신뢰형', '따뜻한 톤', '트렌디한 톤'] : ['Trustworthy', 'Warm', 'Trendy'] },
       ]
     : [
-        { field: 'brand_name', question: 'Do you have a brand name? (Leave blank for unbranded)', required: false },
-        { field: 'highlight_phrase', question: 'Any key phrases you want to emphasize?', required: false },
-        {
-          field: 'detail_length',
-          question: 'Preferred detail page length?',
-          required: true,
-          options: ['Short (4-5 sections)', 'Medium (6-8 sections)', 'Detailed (9-12 sections)'],
-        },
-        {
-          field: 'mood',
-          question: 'What mood/style do you prefer?',
-          required: true,
-          options: ['Professional & trustworthy', 'Warm & friendly', 'Trendy & stylish', 'Simple & clean'],
-        },
-        {
-          field: 'desired_thumbnail_count',
-          question: 'How many thumbnail concepts do you want planned?',
-          required: false,
-          options: ['1', '2', '3', '4+'],
-        },
+        { field: 'image_analysis', question: isKo ? '실제 상품 사진이나 외형 설명을 더 줄 수 있나요?' : 'Can you share real product photos or a clearer visual description?', required: prioritizedFields.has('image_analysis') },
+        { field: 'thumbnail_direction', question: isKo ? '썸네일은 제품 단독 / 모델컷 / 라이프스타일 중 어떤 방향이 좋나요?' : 'Should the thumbnails be product-only, model-led, or lifestyle-led?', required: false, options: isKo ? ['제품 단독', '모델컷 일부 포함', '생활 연출 중심'] : ['Product-only', 'Some model shots', 'Lifestyle-led'] },
+        { field: 'mood', question: isKo ? '카피/이미지 톤은 어떤 쪽이 좋나요?' : 'What overall copy/image tone do you prefer?', required: false, options: isKo ? ['신뢰형', '따뜻한 톤', '트렌디한 톤'] : ['Trustworthy', 'Warm', 'Trendy'] },
+        ...categoryQuestions.slice(0, 2).map((item) => ({ ...item, required: prioritizedFields.has(item.field) || item.required })),
       ]
 
-  const ownProductOnly = isKo
-    ? [
-        { field: 'additional_images_info', question: '상세설명에 꼭 넣고 싶은 이미지가 있나요? (사이즈표, 성분표, 인증서 등)', required: false },
-        { field: 'thumbnail_requests', question: '원하는 썸네일 역할/컷이 있나요? (예: 모델컷, 제품단독컷, 웜무드컷, 디테일컷)', required: false },
-      ]
-    : [
-        { field: 'additional_images_info', question: 'Any must-include images for the detail page (size chart, ingredient table, certificates, etc.)?', required: false },
-        { field: 'thumbnail_requests', question: 'Any specific thumbnail roles you want? (e.g. model cut, product-only cut, warm mood cut, detail cut)', required: false },
-      ]
+  const merged = []
+  for (const base of questionBank) {
+    const clarification = clarificationMap.get(base.field)
+    if (clarification) {
+      merged.push({
+        field: base.field,
+        question: clarification.question,
+        required: base.required,
+        options: clarification.suggested_options || base.options,
+      })
+    } else if (base.required || merged.length < 3) {
+      merged.push(base)
+    }
+  }
 
-  const sourcingQuestions = isKo
-    ? [
-        { field: 'source_marketplace', question: '어느 해외 마켓에서 소싱하나요? (예: Taobao, 1688, Alibaba)', required: true },
-        { field: 'source_url', question: '원상품 링크가 있나요?', required: false },
-        { field: 'source_language', question: '원상품 페이지 언어는 무엇인가요?', required: false },
-        { field: 'source_specs', question: '원상품 옵션/사양/구성품 정보를 알려주세요', required: true },
-        { field: 'origin_country', question: '제조국/원산지 정보가 확인되었나요?', required: true },
-        { field: 'import_compliance_notes', question: '통관/인증/상표 관련 확인된 사항이 있나요?', required: false },
-        { field: 'thumbnail_requests', question: '썸네일은 어떤 역할로 나눌까요? (예: 메인 상품컷, 모델컷, 상세 디테일컷, 신뢰컷)', required: false },
-      ]
-    : [
-        { field: 'source_marketplace', question: 'Which overseas marketplace are you sourcing from? (e.g. Taobao, 1688, Alibaba)', required: true },
-        { field: 'source_url', question: 'Do you have the source listing URL?', required: false },
-        { field: 'source_language', question: 'What is the source listing language?', required: false },
-        { field: 'source_specs', question: 'Share the source options/specs/included parts', required: true },
-        { field: 'origin_country', question: 'Has the country of origin/manufacture been confirmed?', required: true },
-        { field: 'import_compliance_notes', question: 'Any known customs/certification/trademark notes?', required: false },
-        { field: 'thumbnail_requests', question: 'How should the thumbnails be split by role? (e.g. main product cut, model cut, detail cut, trust cut)', required: false },
-      ]
-
-  return sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
-    ? [...sourcingQuestions, ...commonQuestions.slice(2, 5)]
-    : [...commonQuestions, ...ownProductOnly, ...categoryQuestions]
+  return merged.slice(0, 3)
 }
 
 function buildListingFallback(platform, { product, audience, tone, points, disclaimer, config, categoryConfig, args, sellingMode }) {
@@ -1056,8 +1146,8 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
         ? `${product}는 ${source.marketplace || '해외 마켓'} 소싱 정보를 바탕으로 국내 판매용으로 정리한 상품입니다. ${points.join(', ')} 포인트를 중심으로 재구성하며, 원상품 스펙/옵션/인증 정보를 확인한 뒤 업로드하는 것을 권장합니다.`
         : `${product} is being prepared for Korean resale based on ${source.marketplace || 'an overseas marketplace'} sourcing data. The copy is structured around ${points.join(', ')}, and the source specs/options/certification details should be verified before upload.`
       : isKo
-        ? `${product}의 핵심 특장점을 확인하세요. ${points.join(', ')}. ${audience}에게 최적화된 상품입니다.`
-        : `Discover the key features of ${product}: ${points.join(', ')}. Optimized for ${audience}.`
+        ? `${product}의 핵심 특장점을 먼저 정리했습니다. ${points.join(', ')}. ${audience} 관점에서 이해하기 쉽게 상세 구성을 잡았습니다.`
+        : `Here is a practical draft for ${product}, organized around ${points.join(', ')} for ${audience}.`
 
   const sectionDescriptions = categoryConfig.sectionDescriptions[locale] || categoryConfig.sectionDescriptions.ko
   const categoryQuestions = categoryConfig.additionalQuestions[locale] || categoryConfig.additionalQuestions.ko
@@ -1087,12 +1177,12 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
     competitive_edge:
       sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
         ? isKo
-          ? `${source.marketplace || '해외 마켓'} 기반 소싱 상품이라면 국내 구매자가 이해하기 쉬운 번역/사양 정리와 안심 표기를 차별화 포인트로 삼는 전략을 권장합니다.`
-          : `For a sourced product from ${source.marketplace || 'an overseas marketplace'}, clear localization and trust-building compliance messaging can differentiate the listing.`
+          ? `${source.marketplace || '해외 마켓'} 기반 소싱 상품이라면 국내 구매자가 이해하기 쉬운 번역·사양 정리·안심 표기 구성이 실무상 차별 포인트가 될 수 있습니다.`
+          : `For a sourced product from ${source.marketplace || 'an overseas marketplace'}, clear localization, spec organization, and trust-building labeling can be a practical differentiator.`
         : locale === 'ko'
-          ? `이 카테고리에서 ${points[0] || '핵심 장점'}을 중심으로 차별화하는 전략을 권장합니다.`
-          : `Consider differentiating on ${points[0] || 'a key feature'} in this product category.`,
-    questions_for_seller: buildQuestionsForSeller({ config, categoryQuestions, sellingMode }),
+          ? `${points[0] || '핵심 장점'}을 중심으로 이해하기 쉬운 구조와 정직한 정보 전달을 차별 포인트로 가져가는 구성을 권장합니다.`
+          : `A practical differentiator here is a clear structure built around ${points[0] || 'a key feature'} and trustworthy information delivery.`,
+    questions_for_seller: buildQuestionsForSeller({ config, categoryQuestions, sellingMode, requiredMissing, clarificationPoints: workflowOutputs.clarification_points }),
     detail_page_blueprint: {
       recommended_sections: categoryConfig.requiredSections.map((type) => ({
         type,
@@ -1114,11 +1204,11 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
   switch ((platform || '').toLowerCase()) {
     case 'amazon':
       return {
-        title: `${product} - ${points[0] || 'Premium Quality'} - ${points[1] || 'Best Choice'} for ${audience}`,
+        title: `${product} - ${points[0] || 'Key Feature'} - ${points[1] || 'Everyday Use'} for ${audience}`,
         bullet_points: points
           .slice(0, 5)
-          .map((p) => `${p.charAt(0).toUpperCase() + p.slice(1)}: Designed for ${audience}`),
-        product_description: `Discover ${product}, crafted for ${audience}. Key features: ${points.join(', ')}.`,
+          .map((p) => `${p.charAt(0).toUpperCase() + p.slice(1)}: Helpful for ${audience}`),
+        product_description: `Discover ${product} for ${audience}. Key points: ${points.join(', ')}.`,
         backend_search_terms: points.map((p) => p.toLowerCase().replace(/\s+/g, ' ')).join(', '),
         seo_tags: [product, ...points.slice(0, 3)],
         forbidden_word_check: { found: [], warnings: [] },
@@ -1129,7 +1219,7 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
     case 'ebay':
       return {
         title: `${product} ${points[0] || ''} - ${audience} ${points[1] || ''}`.trim().slice(0, 80),
-        subtitle: `${points.slice(0, 2).join(' | ')} - Perfect for ${audience}`.slice(0, 55),
+        subtitle: `${points.slice(0, 2).join(' | ')} - ${audience}`.slice(0, 55),
         item_description: `<p>${product} for ${audience}.</p><ul>${points.map((p) => `<li>${p}</li>`).join('')}</ul>`,
         item_specifics: { Brand: 'Unbranded', Type: product },
         seo_tags: [product, ...points.slice(0, 3)],
@@ -1141,22 +1231,22 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
     default:
       return {
         title_options: [
-          `[${product}] ${points[0] || '핵심 장점'} 강조 ${audience} 맞춤`,
+          `[${product}] ${points[0] || '핵심 장점'} 중심 구성`,
           `${audience}를 위한 ${product} | ${points.slice(0, 2).join(' · ')}`,
         ],
         detail_copy: {
           hook:
             sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
               ? `${audience}에게 맞는 ${product}, 해외 원상품 기준으로 국내 판매용 핵심만 먼저 정리했습니다.`
-              : `${audience}이라면, ${product} 선택 전에 이 포인트를 먼저 보세요.`,
+              : `${audience} 관점에서 ${product}의 핵심 포인트를 먼저 정리했습니다.`,
           body:
             sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
               ? `${points.map((p, i) => `${i + 1}. ${p}`).join(' ')} 원상품 제목/설명/옵션 정보를 국내 판매 문맥으로 정리하고, 통관/인증/표기 사항을 함께 검토하는 흐름으로 작성합니다.`
-              : `${points.map((p, i) => `${i + 1}. ${p}`).join(' ')} 톤 가이드는 '${tone}'를 유지해 신뢰 중심으로 작성합니다.`,
+              : `${points.map((p, i) => `${i + 1}. ${p}`).join(' ')} 톤 가이드는 '${tone}'를 유지해 과장보다 명확성을 우선합니다.`,
           closing_cta:
             sellingMode === SELLING_MODE.CROSS_BORDER_SOURCING
               ? `국내 등록 전 원상품 정보와 필수 표기사항을 마지막으로 대조한 뒤 ${product} 업로드를 진행해보세요.`
-              : `지금 ${product} 상세 정보를 확인하고 내 상황에 맞는 옵션을 선택해보세요.`,
+              : `지금 ${product} 상세 정보를 확인하고 필요한 옵션을 검토해보세요.`,
         },
         seo_tags: [product.replace(/\s+/g, ''), ...points.slice(0, 2).map((x) => x.replace(/\s+/g, ''))],
         ad_copy: {
@@ -1218,6 +1308,11 @@ export async function runListingCopy(args) {
     normalizedArgs.selling_mode === SELLING_MODE.CROSS_BORDER_SOURCING
       ? 'This is a cross-border sourcing flow. Interpret the source listing for Korean resale. Ask sourcing-specific questions, surface import/compliance risks, and do not behave like a simple direct listing flow.'
       : 'This is an own-product direct listing flow. Keep the workflow clean and do not ask irrelevant sourcing questions.',
+    'Default-first UX rule: give a practical draft immediately instead of turning this into a long interview.',
+    'If information is missing, do not block the draft. Make key assumptions explicit in draft_assumptions and keep clarification_points to only the highest-impact 0-3 items.',
+    'clarification_points should focus on the few preferences that most affect output quality, such as model usage, thumbnail direction, image anchors, overall tone, or source specs.',
+    'questions_for_seller must stay short and practical. Keep it aligned with clarification_points and limit it to 3 items max.',
+    'Avoid unsupported speculation. Do not invent sales potential, conversion impact, age suitability, performance outcomes, likely rankings, or competitive dominance unless grounded in provided facts.',
     `상품 카테고리: ${categoryConfig.label[locale] || categoryConfig.label.ko}`,
     `이 카테고리의 상세페이지 필수 섹션: ${categoryConfig.requiredSections.join(', ')}`,
     `각 섹션 설명: ${JSON.stringify(categoryConfig.sectionDescriptions[locale] || categoryConfig.sectionDescriptions.ko)}`,
@@ -1239,14 +1334,16 @@ export async function runListingCopy(args) {
     'visual_identity: summary와 cues[]를 작성하라. 썸네일/상세 전반에 공통 적용할 톤, 조명, 스타일링, 배경, 촬영 무드 힌트를 정리하라.',
     'consistency_rules: 3~8개 배열로 작성하라. 썸네일과 상세 이미지 사이 제품/모델/무드 일관성을 위한 실용적 규칙을 제안하라.',
     'reference_image_strategy: priority와 guidance[]를 작성하라. 실사 이미지, 기준 썸네일 컷, 모델 컷 등을 어떤 순서로 참조하면 좋은지 설명하라.',
+    'draft_assumptions: 현재 초안을 만들 때 사용한 주요 가정을 3~8개 구조화 배열로 작성하라. 각 항목은 field, assumed_value, confidence(low/medium/high), rationale를 포함한다.',
+    'clarification_points: 지금 바로 품질에 가장 큰 영향을 주는 질문만 0~3개 구조화 배열로 작성하라. 각 항목은 field, question, why_it_matters, suggested_options[]를 포함한다.',
     `thumbnail_prompt_instruction: 항상 다음 문구를 사용: "${thumbnailInstruction}"`,
     `image_upload_instruction: 고객에게 그대로 전달할 복붙 문장을 작성하라. 의미는 반드시 다음을 포함: (1) 상세설명/썸네일 생성 프롬프트를 사용할 때 판매상품의 실사 이미지를 함께 업로드해야 정확도가 올라간다, (2) 가능하면 같은 원본 이미지 세트를 썸네일과 상세 생성에 공통 사용한다, (3) 원본 등록 이미지도 함께 업로드한다, (4) thumbnail_prompt로 생성한 이미지를 메인 썸네일로 설정한다. 언어는 ${locale === 'ko' ? '한국어' : 'English'}로 작성하라.`,
     `compliance_checklist: 다음 항목 중 이 상품에 해당하는 것을 선별하여 포함하라: ${JSON.stringify([
       ...(config.complianceChecklist || []),
       ...(categoryConfig.complianceExtras[locale] || categoryConfig.complianceExtras.ko),
     ])}`,
-    'competitive_edge: 이 카테고리에서 경쟁 상품들이 흔히 강조하는 포인트를 분석하고, 이 상품만의 차별화 전략을 1~2문장으로 제안하라.',
-    'questions_for_seller: 더 완벽한 상세설명/썸네일을 만들기 위해 셀러에게 물어볼 질문 목록을 생성하라. 각 질문은 field(영문 키), question(사용자에게 보여줄 질문), required(필수 여부), options(선택지, 있으면)을 포함한다. 최소 3개, 최대 6개. selling_mode에 따라 own_product 또는 cross_border_sourcing에 맞는 질문만 내라.',
+    'competitive_edge: 과장 대신 실무적인 차별화 방향을 1~2문장으로 제안하라. 경쟁 우위나 성과를 단정하지 마라.',
+    'questions_for_seller: 더 나은 후속 수정에 도움이 되는 짧은 질문 목록을 생성하라. 각 질문은 field(영문 키), question(사용자에게 보여줄 질문), required(필수 여부), options(선택지, 있으면)을 포함한다. 최대 3개. clarification_points와 같은 방향을 유지하고 긴 인터뷰가 되지 않게 하라.',
     'detail_page_blueprint: AI가 상품을 분석하여 추천하는 상세페이지 구성안을 작성하라. recommended_sections에 섹션 타입(hero/empathy/features/material/usage/size_guide/closing 등)과 설명을 배열로 제공하라. ai_notes에 상품 분석 결과와 디자인 제안을 1~2문장으로 작성하라.',
     'selling_mode: 응답에 반드시 포함하라. own_product 또는 cross_border_sourcing 중 하나여야 한다.',
     'localized_product_summary: 응답에 반드시 포함하라. 특히 cross_border_sourcing이면 source_title, source_description, source_specs, source_language를 바탕으로 한국 판매용 요약을 써라.',

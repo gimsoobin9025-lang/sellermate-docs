@@ -22,6 +22,10 @@ test('listing_copy own-product flow adds structured readiness outputs and machin
   assert.equal(Array.isArray(out.required_checks), true)
   assert.equal(Array.isArray(out.thumbnail_prompts), true)
   assert.equal(Array.isArray(out.thumbnail_plan), true)
+  assert.equal(Array.isArray(out.draft_assumptions), true)
+  assert.equal(Array.isArray(out.clarification_points), true)
+  assert.equal(out.clarification_points.length <= 3, true)
+  assert.equal(out.questions_for_seller.length <= 3, true)
   assert.equal(typeof out.recommended_main_thumbnail, 'object')
   assert.equal(typeof out.model_profile.profile, 'string')
   assert.equal(typeof out.visual_identity.summary, 'string')
@@ -40,6 +44,8 @@ test('listing_copy own-product flow adds structured readiness outputs and machin
   assert.equal(out.thumbnail_plan[0].slot, 1)
   assert.equal(out.thumbnail_prompt, out.thumbnail_prompts[out.recommended_main_thumbnail.slot - 1])
   assert.equal(out.questions_for_seller.some((item) => item.field === 'source_marketplace'), false)
+  assert.equal(out.draft_assumptions.some((item) => item.field === 'thumbnail_text_overlay'), true)
+  assert.equal(out.clarification_points.some((item) => item.field === 'image_analysis'), true)
 })
 
 test('listing_copy supports multi-thumbnail planning and keeps backward-compatible main thumbnail output', async () => {
@@ -107,10 +113,12 @@ test('listing_copy cross-border flow surfaces sourcing gaps, risk flags, and loc
   assert.equal(out.risk_flags.includes('import_labeling_check_required'), true)
   assert.equal(out.risk_flags.includes('electronics_certification_review_required'), true)
   assert.match(out.localized_product_summary, /Taobao|해외/)
-  assert.equal(out.questions_for_seller.some((item) => item.field === 'source_marketplace'), true)
+  assert.equal(out.questions_for_seller.some((item) => item.field === 'source_marketplace'), false)
+  assert.equal(out.questions_for_seller.some((item) => item.field === 'source_specs'), true)
   assert.equal(out.questions_for_seller.some((item) => item.field === 'age_range'), false)
   assert.match(out.next_steps[0].action, /원상품 정보 해석|Interpret and normalize source product data/i)
   assert.equal(out.image_plan.some((item) => item.role === 'localized_summary'), true)
+  assert.equal(out.clarification_points.some((item) => item.field === 'source_specs'), true)
 })
 
 test('listing_copy auto-detects cross-border mode from source fields for backward compatibility', async () => {
@@ -138,4 +146,30 @@ test('listing_copy auto-detects cross-border mode from source fields for backwar
   assert.equal(out.image_plan[0].notes.includes('pure white background'), true)
   assert.equal(Array.isArray(out.thumbnail_prompts), true)
   assert.equal(typeof out.reference_image_strategy.priority, 'string')
+  assert.equal(out.draft_assumptions.some((item) => item.field === 'source_localization_scope'), true)
+})
+
+test('listing_copy keeps unsupported speculation toned down in fallback copy', async () => {
+  const out = await runListingCopy({
+    product_name: '스테인리스 텀블러',
+    selling_points: ['보온 유지', '누수 방지', '휴대 편의'],
+    target_audience: '출퇴근 직장인',
+    platform: 'smartstore',
+    tone: '담백하고 신뢰감 있게',
+    category: 'living',
+    product_details: '스테인리스 바디, 500ml, 뚜껑 포함',
+  })
+
+  const contentOnly = JSON.stringify({
+    detail_copy: out.detail_copy,
+    detail_page_copy: out.detail_page_copy,
+    competitive_edge: out.competitive_edge,
+    warnings: out.warnings,
+    draft_assumptions: out.draft_assumptions,
+    clarification_points: out.clarification_points,
+    questions_for_seller: out.questions_for_seller,
+  })
+  assert.doesNotMatch(contentOnly, /전환율|best seller|best-selling|high conversion|sales volume/i)
+  assert.equal(out.clarification_points.length <= 3, true)
+  assert.equal(out.questions_for_seller.length <= 3, true)
 })
