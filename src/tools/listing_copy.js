@@ -23,6 +23,28 @@ const detailPageBlueprintSchema = z.object({
   ai_notes: z.string(),
 })
 
+const listingRequirementItemSchema = z.object({
+  field: z.string(),
+  reason: z.string(),
+  severity: z.enum(['critical', 'recommended']),
+  source: z.enum(['platform', 'category', 'seller']),
+})
+
+const nextStepSchema = z.object({
+  step: z.number(),
+  action: z.string(),
+  status: z.enum(['pending', 'recommended', 'completed']),
+  reason: z.string(),
+})
+
+const imagePlanItemSchema = z.object({
+  slot: z.number(),
+  role: z.string(),
+  objective: z.string(),
+  must_show: z.array(z.string()),
+  notes: z.string(),
+})
+
 export const listingCopyTool = {
   name: 'listing_copy',
   title: 'Listing Copy Generator',
@@ -51,6 +73,16 @@ export const listingCopyTool = {
   },
 }
 
+function getCommonFlowSchema() {
+  return {
+    required_missing: z.array(listingRequirementItemSchema),
+    warnings: z.array(z.string()),
+    ready_to_upload: z.boolean(),
+    next_steps: z.array(nextStepSchema).min(3).max(8),
+    image_plan: z.array(imagePlanItemSchema).min(4).max(8),
+  }
+}
+
 function getListingOutputSchema(platform) {
   switch ((platform || '').toLowerCase()) {
     case 'amazon':
@@ -75,6 +107,7 @@ function getListingOutputSchema(platform) {
         disclaimer: z.string(),
         questions_for_seller: questionsForSellerSchema,
         detail_page_blueprint: detailPageBlueprintSchema,
+        ...getCommonFlowSchema(),
       })
 
     case 'ebay':
@@ -99,6 +132,7 @@ function getListingOutputSchema(platform) {
         disclaimer: z.string(),
         questions_for_seller: questionsForSellerSchema,
         detail_page_blueprint: detailPageBlueprintSchema,
+        ...getCommonFlowSchema(),
       })
 
     default:
@@ -129,11 +163,286 @@ function getListingOutputSchema(platform) {
         disclaimer: z.string(),
         questions_for_seller: questionsForSellerSchema,
         detail_page_blueprint: detailPageBlueprintSchema,
+        ...getCommonFlowSchema(),
       })
   }
 }
 
-function buildListingFallback(platform, { product, audience, tone, points, disclaimer, config, categoryConfig }) {
+function hasMeaningfulValue(value) {
+  if (Array.isArray(value)) return value.some((item) => String(item || '').trim())
+  if (typeof value === 'boolean') return true
+  return value !== undefined && value !== null && String(value).trim() !== ''
+}
+
+function buildRequirementChecks(args, config, categoryConfig) {
+  const locale = config.locale
+  const isKo = locale === 'ko'
+  const requirements = []
+
+  const addRequirement = (field, reason, severity, source, present) => {
+    if (!present) requirements.push({ field, reason, severity, source })
+  }
+
+  addRequirement(
+    'product_details',
+    isKo ? '상세 스펙/구성/재질 정보가 부족합니다.' : 'Detailed specs/components/material info is missing.',
+    'critical',
+    'seller',
+    hasMeaningfulValue(args.product_details)
+  )
+
+  addRequirement(
+    'image_analysis',
+    isKo ? '실사 이미지 분석 정보가 없어서 제품 정합성 점검이 제한됩니다.' : 'Real product image analysis is missing, so product-accuracy checks are limited.',
+    'recommended',
+    'seller',
+    hasMeaningfulValue(args.image_analysis)
+  )
+
+  if (args.is_imported) {
+    addRequirement(
+      'origin_country',
+      isKo ? '수입 상품은 원산지/제조국 정보가 필요합니다.' : 'Imported products need country of origin/manufacture.',
+      'critical',
+      'platform',
+      hasMeaningfulValue(args.origin_country)
+    )
+  }
+
+  const platformSpecific = {
+    amazon: [
+      {
+        field: 'brand_name',
+        reason: isKo ? 'Amazon 타이틀 포맷상 브랜드 정보 확인이 필요합니다.' : 'Amazon title structure usually needs brand confirmation.',
+        severity: 'recommended',
+        source: 'platform',
+        present: /brand|브랜드/i.test(String(args.product_details || '')),
+      },
+    ],
+    ebay: [
+      {
+        field: 'item_specifics',
+        reason: isKo ? 'eBay 노출을 위해 핵심 item specifics 근거 정보가 더 필요합니다.' : 'eBay visibility improves with clearer item specifics inputs.',
+        severity: 'recommended',
+        source: 'platform',
+        present: hasMeaningfulValue(args.product_details),
+      },
+    ],
+    smartstore: [
+      {
+        field: 'thumbnail_style',
+        reason: isKo ? '메인 썸네일 방향을 정하면 스마트스토어 CTR 설계가 더 좋아집니다.' : 'A thumbnail direction helps optimize SmartStore CTR.',
+        severity: 'recommended',
+        source: 'platform',
+        present: hasMeaningfulValue(args.thumbnail_style),
+      },
+    ],
+  }
+
+  for (const item of platformSpecific[String(args.platform || '').toLowerCase()] || []) {
+    addRequirement(item.field, item.reason, item.severity, item.source, item.present)
+  }
+
+  for (const question of categoryConfig.additionalQuestions[locale] || categoryConfig.additionalQuestions.ko || []) {
+    const aliases = {
+      fabric_composition: ['fabric_composition', '혼용률', '소재'],
+      size_range: ['size_range', '사이즈'],
+      ingredients_list: ['ingredients_list', '원재료', 'ingredients'],
+      storage_method: ['storage_method', '보관'],
+      key_specs: ['key_specs', '사양', 'spec'],
+      whats_in_box: ['whats_in_box', '구성품', 'included'],
+      full_ingredients: ['full_ingredients', '전성분', 'ingredients'],
+      volume: ['volume', '용량'],
+      age_range: ['age_range', '연령'],
+      safety_cert: ['safety_cert', '인증', 'cert'],
+      dimensions: ['dimensions', '크기', '규격', 'size'],
+      material: ['material', '재질'],
+    }
+    const haystack = [args.product_details, args.image_analysis, ...(args.must_include_images || [])].join(' ').toLowerCase()
+    const present = (aliases[question.field] || [question.field]).some((token) => haystack.includes(String(token).toLowerCase()))
+    addRequirement(
+      question.field,
+      question.question,
+      question.required ? 'critical' : 'recommended',
+      'category',
+      present
+    )
+  }
+
+  return requirements
+}
+
+function buildWorkflowOutputs({ args, product, config, categoryConfig, requiredMissing }) {
+  const locale = config.locale
+  const isKo = locale === 'ko'
+  const criticalMissing = requiredMissing.filter((item) => item.severity === 'critical')
+  const missingFields = new Set(requiredMissing.map((item) => item.field))
+  const mustIncludeImages = (args.must_include_images || []).map(sanitizeText).filter(Boolean)
+  const categorySections = categoryConfig.requiredSections || []
+
+  const warnings = []
+  if (!args.image_analysis) {
+    warnings.push(
+      isKo
+        ? '실사 이미지 분석이 없어 썸네일/상세 이미지 결과가 실제 상품과 다를 수 있습니다.'
+        : 'Without real image analysis, thumbnail/detail visuals may drift from the actual product.'
+    )
+  }
+  if (mustIncludeImages.length === 0) {
+    warnings.push(
+      isKo
+        ? '사이즈표/성분표/인증서 같은 필수 이미지 자산 여부를 아직 확인하지 않았습니다.'
+        : 'Required asset images like size charts, ingredient tables, or certificates are not confirmed yet.'
+    )
+  }
+  if (criticalMissing.length > 0) {
+    warnings.push(
+      isKo
+        ? '핵심 입력이 비어 있어 지금 업로드하면 누락 위험이 있습니다.'
+        : 'Critical listing inputs are still missing, so uploading now risks omissions.'
+    )
+  }
+
+  const readyToUpload = criticalMissing.length === 0
+
+  const nextSteps = []
+  nextSteps.push({
+    step: 1,
+    action: isKo ? '제목/대표 카피 확정' : 'Confirm title and primary copy',
+    status: 'pending',
+    reason:
+      String(args.platform).toLowerCase() === 'amazon'
+        ? isKo
+          ? 'Amazon은 타이틀 구조와 핵심 키워드 정리가 우선입니다.'
+          : 'Amazon performance depends on title structure and front-loaded keywords.'
+        : isKo
+          ? '업로드 전에 노출 핵심 문구를 먼저 확정하세요.'
+          : 'Lock the main shopper-facing copy before asset execution.',
+  })
+  nextSteps.push({
+    step: 2,
+    action: missingFields.size > 0 ? (isKo ? '누락 필수정보 보강' : 'Fill missing required info') : isKo ? '썸네일 생성' : 'Generate thumbnail',
+    status: missingFields.size > 0 ? 'pending' : 'recommended',
+    reason:
+      missingFields.size > 0
+        ? isKo
+          ? `다음 필드를 먼저 채우세요: ${[...missingFields].join(', ')}`
+          : `Complete these fields first: ${[...missingFields].join(', ')}`
+        : isKo
+          ? '대표 이미지가 클릭률과 상품 인지에 직접 영향을 줍니다.'
+          : 'The main image directly affects click-through and product recognition.',
+  })
+  nextSteps.push({
+    step: 3,
+    action: isKo ? '상세 이미지 세트 생성' : 'Generate detail image set',
+    status: 'recommended',
+    reason:
+      isKo
+        ? `${categorySections.length}개 핵심 섹션 기준으로 상세 이미지를 준비하면 누락 방지에 유리합니다.`
+        : `Preparing detail visuals around ${categorySections.length} core sections reduces omission risk.`,
+  })
+  nextSteps.push({
+    step: 4,
+    action:
+      String(args.platform).toLowerCase() === 'amazon'
+        ? 'Populate backend/search fields'
+        : isKo
+          ? '플랫폼 업로드 항목 입력'
+          : 'Populate platform upload fields',
+    status: readyToUpload ? 'recommended' : 'pending',
+    reason:
+      isKo
+        ? '플랫폼별 필수 속성과 컴플라이언스 항목을 함께 입력하세요.'
+        : 'Fill required platform attributes together with compliance items.',
+  })
+  nextSteps.push({
+    step: 5,
+    action: isKo ? '최종 컴플라이언스 점검 후 업로드' : 'Run final compliance check and upload',
+    status: readyToUpload ? 'recommended' : 'pending',
+    reason:
+      readyToUpload
+        ? isKo
+          ? '현재 기준으로는 업로드 진행이 가능합니다.'
+          : 'Based on current inputs, the listing is ready for upload.'
+        : isKo
+          ? 'critical 누락을 먼저 해결한 뒤 업로드하세요.'
+          : 'Resolve critical omissions before uploading.',
+  })
+
+  const imageRoleMap = [
+    {
+      role: 'main_thumbnail',
+      sectionType: 'hero',
+      objective: isKo ? '상품을 즉시 식별시키는 대표 컷' : 'Primary image for instant product recognition',
+    },
+    {
+      role: 'key_benefit',
+      sectionType: categorySections[2] || 'features',
+      objective: isKo ? '핵심 셀링포인트 1~2개 강조' : 'Highlight 1-2 core selling points',
+    },
+    {
+      role: 'usage_scene',
+      sectionType: categorySections.find((item) => /usage|styling|scene|how_to_use/.test(item)) || 'usage',
+      objective: isKo ? '실사용 장면과 타깃 맥락 제시' : 'Show real-use scenario and target context',
+    },
+    {
+      role: 'spec_size',
+      sectionType: categorySections.find((item) => /size|spec|ingredients|nutrition|key_specs/.test(item)) || 'specs',
+      objective: isKo ? '규격/성분/사양을 명확히 전달' : 'Communicate specs/ingredients clearly',
+    },
+    {
+      role: 'trust_closing',
+      sectionType: categorySections[categorySections.length - 1] || 'closing',
+      objective: isKo ? '인증/안심/마무리 구매 유도' : 'Close with trust and buying confidence',
+    },
+  ]
+
+  const extraPlan = mustIncludeImages.slice(0, 3).map((item, index) => ({
+    slot: imageRoleMap.length + index + 1,
+    role: 'seller_required_asset',
+    objective: isKo ? '셀러가 꼭 넣고 싶은 자산 반영' : 'Include seller-mandated asset',
+    must_show: [item],
+    notes: isKo ? '상세 중 관련 섹션 근처에 배치하세요.' : 'Place near the most relevant detail section.',
+  }))
+
+  const imagePlan = imageRoleMap.map((item, index) => ({
+    slot: index + 1,
+    role: item.role,
+    objective: item.objective,
+    must_show:
+      item.role === 'main_thumbnail'
+        ? [product, ...(args.image_analysis ? [isKo ? '실제 상품 형태 유지' : 'preserve actual product shape'] : [])]
+        : item.role === 'key_benefit'
+          ? (args.selling_points || []).slice(0, 2).map(sanitizeText)
+          : item.role === 'usage_scene'
+            ? [sanitizeText(args.target_audience), product]
+            : item.role === 'spec_size'
+              ? mustIncludeImages.length > 0
+                ? mustIncludeImages.slice(0, 2)
+                : [isKo ? '사양/사이즈/성분 정보' : 'spec/size/ingredient information']
+              : [isKo ? '인증/주의사항/마감 CTA' : 'certification/caution/final CTA'],
+    notes:
+      String(args.platform).toLowerCase() === 'amazon'
+        ? item.role === 'main_thumbnail'
+          ? 'Use pure white background and avoid text overlays.'
+          : 'Keep infographics secondary to listing-compliant photography.'
+        : String(args.platform).toLowerCase() === 'ebay'
+          ? 'Make it clear, practical, and friendly to item-specifics storytelling.'
+          : isKo
+            ? '국내 쇼핑몰 세로형 상세 흐름에 맞게 가독성을 우선하세요.'
+            : 'Prioritize readability in a marketplace-friendly sequence.',
+  }))
+
+  return {
+    required_missing: requiredMissing,
+    warnings: [...new Set(warnings)],
+    ready_to_upload: readyToUpload,
+    next_steps: [...nextSteps.slice(0, 5)],
+    image_plan: [...imagePlan, ...extraPlan].slice(0, 8),
+  }
+}
+
+function buildListingFallback(platform, { product, audience, tone, points, disclaimer, config, categoryConfig, args }) {
   const detailPageCopy =
     config.locale === 'ko'
       ? `${product}의 핵심 특장점을 확인하세요. ${points.join(', ')}. ${audience}에게 최적화된 상품입니다.`
@@ -142,6 +451,8 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
   const locale = config.locale
   const sectionDescriptions = categoryConfig.sectionDescriptions[locale] || categoryConfig.sectionDescriptions.ko
   const categoryQuestions = categoryConfig.additionalQuestions[locale] || categoryConfig.additionalQuestions.ko
+  const requiredMissing = buildRequirementChecks(args, config, categoryConfig)
+  const workflowOutputs = buildWorkflowOutputs({ args, product, config, categoryConfig, requiredMissing })
 
   const common = {
     detail_page_copy: detailPageCopy,
@@ -226,6 +537,7 @@ function buildListingFallback(platform, { product, audience, tone, points, discl
           ? `${product}는 ${categoryConfig.label[config.locale] || categoryConfig.label.ko} 카테고리이며, 핵심 셀링포인트는 ${points.slice(0, 2).join(', ')}입니다.`
           : `${product} belongs to ${categoryConfig.label[config.locale] || categoryConfig.label.en} category. Key selling points: ${points.slice(0, 2).join(', ')}.`,
     },
+    ...workflowOutputs,
   }
 
   switch ((platform || '').toLowerCase()) {
@@ -299,6 +611,7 @@ export async function runListingCopy(args) {
     disclaimer,
     config,
     categoryConfig,
+    args,
   })
   const outputSchema = getListingOutputSchema(args.platform)
 
@@ -332,6 +645,11 @@ export async function runListingCopy(args) {
     'competitive_edge: 이 카테고리에서 경쟁 상품들이 흔히 강조하는 포인트를 분석하고, 이 상품만의 차별화 전략을 1~2문장으로 제안하라.',
     'questions_for_seller: 더 완벽한 상세설명/썸네일을 만들기 위해 셀러에게 물어볼 질문 목록을 생성하라. 각 질문은 field(영문 키), question(사용자에게 보여줄 질문), required(필수 여부), options(선택지, 있으면)을 포함한다. 최소 3개, 최대 6개.',
     'detail_page_blueprint: AI가 상품을 분석하여 추천하는 상세페이지 구성안을 작성하라. recommended_sections에 섹션 타입(hero/empathy/features/material/usage/size_guide/closing 등)과 설명을 배열로 제공하라. ai_notes에 상품 분석 결과와 디자인 제안을 1~2문장으로 작성하라.',
+    'required_missing: 플랫폼/카테고리/입력값을 기준으로 현재 업로드 전에 보강이 필요한 필드를 구조화해라. 각 항목은 field, reason, severity(critical/recommended), source(platform/category/seller)를 포함한다.',
+    'warnings: 셀러가 놓치기 쉬운 위험/주의사항을 문자열 배열로 작성하라. 단, required_missing와 중복되는 기계적 필드 나열 대신 맥락을 써라.',
+    'ready_to_upload: critical required_missing이 없으면 true, 있으면 false.',
+    'next_steps: 셀러가 다음에 해야 할 일을 순서대로 배열로 작성하라. 각 항목은 step, action, status(pending/recommended/completed), reason을 포함한다.',
+    'image_plan: 이미지 실행 계획을 4~8개 슬롯으로 작성하라. 각 항목은 slot, role, objective, must_show[], notes를 포함한다. 한국 플랫폼에는 메인썸네일/핵심혜택/사용장면/규격·성분/신뢰·마감 흐름을 우선 반영하고, Amazon/eBay에도 무리 없게 조정하라.',
     'image_analysis 필드가 제공된 경우, 해당 텍스트를 상품 외형/디자인 정보로 활용하여 더 정확한 카피와 썸네일 프롬프트를 작성하라.',
     'is_imported가 true이면 수입 상품 관련 필수 표기사항을 compliance_checklist에 반드시 포함하라.',
     'thumbnail_style이 제공되면 해당 스타일을 썸네일 프롬프트에 반영하라. 단, 스타일보다 제품 식별성/형태 보존을 우선하라.',
