@@ -14,6 +14,15 @@ export function sanitizeText(text = '') {
   return String(text).replace(/\s+/g, ' ').trim()
 }
 
+export function escapeHtml(text = '') {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export function containsForbiddenWords(text, forbiddenWords = []) {
   const found = forbiddenWords.filter((w) => w && text.includes(w))
   return [...new Set(found)]
@@ -95,5 +104,45 @@ export function noFabricatedMetricsGuard(text) {
     policyViolation: reasons.length > 0,
     reasons,
     warnings,
+  }
+}
+
+export function applyFabricatedMetricsGuardToFields(payload, fieldPaths = []) {
+  const clone = JSON.parse(JSON.stringify(payload || {}))
+  const reasons = []
+  const warnings = new Set()
+  let policyViolation = false
+
+  for (const path of fieldPaths) {
+    if (!path) continue
+    const segments = String(path).split('.').filter(Boolean)
+    if (segments.length === 0) continue
+
+    let current = clone
+    for (let i = 0; i < segments.length - 1; i += 1) {
+      current = current?.[segments[i]]
+      if (!current || typeof current !== 'object') {
+        current = null
+        break
+      }
+    }
+
+    if (!current || typeof current !== 'object') continue
+
+    const leaf = segments[segments.length - 1]
+    if (typeof current[leaf] !== 'string') continue
+
+    const guarded = noFabricatedMetricsGuard(current[leaf])
+    current[leaf] = guarded.text
+    policyViolation = policyViolation || guarded.policyViolation
+    guarded.reasons.forEach((reason) => reasons.push(`${path}:${reason}`))
+    guarded.warnings.forEach((warning) => warnings.add(warning))
+  }
+
+  return {
+    payload: clone,
+    policyViolation,
+    reasons: [...new Set(reasons)],
+    warnings: [...warnings],
   }
 }

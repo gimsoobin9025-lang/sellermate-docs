@@ -1,8 +1,13 @@
 import { z } from 'zod'
 import { getDisclaimer } from '../lib/disclaimer.js'
-import { noFabricatedMetricsGuard, sanitizeText } from '../lib/validation.js'
+import { applyFabricatedMetricsGuardToFields, escapeHtml, sanitizeText } from '../lib/validation.js'
 import { maybeEnhanceWithLlm } from '../lib/llm.js'
-import { getPlatformConfig, GLOBAL_METRIC_RULE, getCategoryConfig } from '../lib/platform-prompts.js'
+import {
+  getPlatformConfig,
+  GLOBAL_METRIC_RULE,
+  getCategoryConfig,
+  getDetailPageHtmlConfig,
+} from '../lib/platform-prompts.js'
 
 export const detailPageGenerateTool = {
   name: 'detail_page_generate',
@@ -79,21 +84,97 @@ const moodStyles = {
 }
 
 function getContainerWidth(platform) {
-  const p = String(platform || '').toLowerCase()
-  const width = {
-    smartstore: 860,
-    coupang: 780,
-    '11st': 860,
-    amazon: 800,
-    ebay: 800,
-    instagram: 600,
-    all: 860,
-  }[p]
-  return `${width || 860}px`
+  return getDetailPageHtmlConfig(platform).containerWidth || '860px'
 }
 
 function getSectionCount(length) {
   return { short: 5, medium: 7, detailed: 10 }[length] || 7
+}
+
+function getFallbackSectionBody({ sectionType, product, audience, points, locale, categoryConfig }) {
+  const descriptions = categoryConfig.sectionDescriptions[locale] || categoryConfig.sectionDescriptions.ko || {}
+  const sectionLabel = descriptions[sectionType] || sectionType
+  const primaryPoint = points[0] || product
+  const secondaryPoint = points[1] || (locale === 'ko' ? '실사용 편의성' : 'everyday usability')
+
+  const koMap = {
+    hero: `${product}의 첫인상을 가장 잘 보여주는 핵심 포인트를 강조해 신뢰감 있게 소개합니다.`,
+    empathy: `${audience}가 자주 느끼는 불편과 고민을 짚고, ${product}가 왜 좋은 선택이 될 수 있는지 자연스럽게 연결합니다.`,
+    parent_empathy: `${audience}의 기준에서 안심하고 고를 수 있도록 실사용 맥락과 배려 포인트를 중심으로 안내합니다.`,
+    problem_solve: `${product}가 일상에서 어떤 불편을 덜어주고 ${primaryPoint} 측면에서 어떤 도움을 주는지 이해하기 쉽게 설명합니다.`,
+    taste_appeal: `${product}의 맛, 향, 식감, 만족감을 떠올릴 수 있도록 구매 포인트를 정리합니다.`,
+    skin_appeal: `${audience}의 피부 고민이나 사용 상황에 맞춰 ${product}의 장점을 부드럽게 전달합니다.`,
+    features: `${primaryPoint}와 ${secondaryPoint}처럼 고객이 바로 이해할 수 있는 핵심 장점을 중심으로 정리합니다.`,
+    key_specs: `${product} 선택에 필요한 주요 사양과 확인 포인트를 한눈에 볼 수 있게 구성합니다.`,
+    specs: `${product}의 규격, 구성, 확인해야 할 기본 정보를 깔끔하게 정리합니다.`,
+    ingredients: `${product}에 포함된 주요 성분과 확인 포인트를 이해하기 쉽게 안내합니다.`,
+    nutrition: `영양 정보와 섭취 시 참고할 내용을 보기 쉽게 정리합니다.`,
+    storage: `보관 방법과 관리 시 유의할 점을 명확하게 안내합니다.`,
+    usage: `${product}를 더 잘 활용할 수 있도록 사용 방법과 추천 상황을 자연스럽게 제안합니다.`,
+    how_to_use: `${product}를 편하게 사용할 수 있도록 순서와 팁을 함께 안내합니다.`,
+    compatibility: `함께 사용하기 좋은 환경, 기기, 조건 등을 확인할 수 있게 설명합니다.`,
+    unboxing: `구성품과 처음 사용할 때 확인하면 좋은 포인트를 정리합니다.`,
+    warranty: `구매 후 참고할 수 있는 보증, 지원, 안내 정보를 신뢰감 있게 담습니다.`,
+    material_fit: `소재의 특징과 착용/사용 시 느껴지는 핏 또는 사용감을 중심으로 설명합니다.`,
+    material: `재질과 마감, 사용감 등 구매 전 확인하고 싶은 포인트를 중심으로 소개합니다.`,
+    size_guide: `사이즈나 선택 기준을 보다 쉽게 판단할 수 있도록 필요한 정보를 정리합니다.`,
+    age_guide: `권장 연령 또는 사용 대상을 이해하기 쉽도록 정리합니다.`,
+    styling: `${product}를 더 잘 활용할 수 있는 코디/연출 아이디어를 제안합니다.`,
+    usage_scene: `${product}가 잘 어울리는 사용 장면과 공간을 떠올릴 수 있게 보여줍니다.`,
+    texture: `텍스처, 사용감, 마무리 느낌처럼 실제 경험에 가까운 포인트를 설명합니다.`,
+    before_after: `사용 전후에 기대할 수 있는 변화 방향을 과장 없이 이해하기 쉽게 전달합니다.`,
+    certification: `구매 전 확인이 필요한 인증·표기 정보를 보기 쉽게 정리합니다.`,
+    safety: `안전하게 사용할 수 있도록 확인해야 할 기준과 관련 정보를 중심으로 안내합니다.`,
+    care: `오래 만족스럽게 사용할 수 있도록 관리 방법과 주의사항을 안내합니다.`,
+    closing: `${product}의 핵심 장점을 다시 한번 정리하며 구매 전 확인 포인트를 깔끔하게 마무리합니다.`,
+  }
+
+  const enMap = {
+    hero: `Lead with the most compelling first impression of ${product} in a clear, trustworthy way.`,
+    empathy: `Connect the common needs of ${audience} to why ${product} is a strong fit.`,
+    parent_empathy: `Explain the product from a caregiver's perspective with reassurance and practical context.`,
+    problem_solve: `Show how ${product} helps solve everyday pain points, especially around ${primaryPoint}.`,
+    taste_appeal: `Highlight the taste, aroma, texture, and reasons customers may enjoy this product.`,
+    skin_appeal: `Match the product benefits to the likely needs and routines of ${audience}.`,
+    features: `Organize the key benefits around points like ${primaryPoint} and ${secondaryPoint}.`,
+    key_specs: `Present the main specifications and decision-making details at a glance.`,
+    specs: `Summarize the core specifications, configuration, and practical details clearly.`,
+    ingredients: `Explain the main ingredients or components in an easy-to-scan format.`,
+    nutrition: `Present nutrition-related information in a simple, shopper-friendly way.`,
+    storage: `Clarify storage guidance and care considerations for everyday use.`,
+    usage: `Suggest how to use ${product} effectively in realistic customer scenarios.`,
+    how_to_use: `Walk through the recommended usage flow with practical tips.`,
+    compatibility: `Explain compatible environments, devices, or conditions clearly.`,
+    unboxing: `Summarize what comes in the box and what customers should check first.`,
+    warranty: `Provide reassuring warranty and support information in a clear format.`,
+    material_fit: `Describe the material character and the expected fit or feel in use.`,
+    material: `Cover material, finish, and tactile details customers often want to know.`,
+    size_guide: `Help customers choose more confidently with sizing or selection guidance.`,
+    age_guide: `Clarify the recommended age range or intended user group.`,
+    styling: `Offer styling or pairing ideas that make the product easier to imagine in use.`,
+    usage_scene: `Paint a picture of the settings and moments where the product fits naturally.`,
+    texture: `Describe texture, feel, and finish in a grounded, experience-based way.`,
+    before_after: `Explain likely before/after differences carefully without exaggeration.`,
+    certification: `Organize important certification or labeling information clearly.`,
+    safety: `Focus on the safety-related checks and information customers care about.`,
+    care: `Explain how to maintain the product for better long-term satisfaction.`,
+    closing: `Wrap up the key value points of ${product} and reinforce purchase confidence.`,
+  }
+
+  const map = locale === 'ko' ? koMap : enMap
+  return map[sectionType] || `${sectionLabel}: ${locale === 'ko' ? `${product} 선택 시 확인하면 좋은 핵심 정보를 정리합니다.` : `Summarize the key information customers should review for ${product}.`}`
+}
+
+function getGuardedDetailPageFieldPaths(payload) {
+  const sectionHeadlinePaths = Array.isArray(payload?.sections_summary)
+    ? payload.sections_summary.map((_, index) => `sections_summary.${index}.headline`)
+    : []
+
+  const imageInstructionPaths = Array.isArray(payload?.image_placement_guide)
+    ? payload.image_placement_guide.map((_, index) => `image_placement_guide.${index}.instruction`)
+    : []
+
+  return ['detail_page_html', 'download_instruction', 'disclaimer', ...sectionHeadlinePaths, ...imageInstructionPaths]
 }
 
 function buildFallback(args, disclaimer, locale, categoryConfig) {
@@ -132,33 +213,42 @@ function buildFallback(args, disclaimer, locale, categoryConfig) {
         : `Place real product photos/infographics in the ${type} section placeholder.`,
   }))
 
-  const featureList = points
-    .slice(0, 6)
-    .map(
-      (p, i) =>
-        `<li style="margin:8px 0;line-height:1.6;"><strong style="color:${colors.primary};">${i + 1}.</strong> ${p}</li>`
-    )
-    .join('')
+  const safeProduct = escapeHtml(product)
+  const safeAudience = escapeHtml(audience)
+  const safeBrandDisplay = escapeHtml(brand || (locale === 'ko' ? '프리미엄' : 'Premium'))
+  const safeHeadline = escapeHtml(highlights[0] || (locale === 'ko' ? `${audience}를 위한 선택` : `The choice for ${audience}`))
 
   const sectionBlocks = sectionsSummary
-    .map(
-      (s) => `<section class='section-${s.section_type}' style='margin:24px 0;padding:20px;background:#fff;border-radius:14px;border:1px solid ${colors.accent}44;'>
-  <h2 style='margin:0 0 10px;color:${colors.primary};font-size:22px;'>${s.section_number}. ${s.headline}</h2>
-  <p style='margin:0;color:#333;line-height:1.7;'>${product} ${s.section_type} 섹션 설명 영역입니다.</p>
-  <div class='image-placeholder'><p>📷 ${locale === 'ko' ? '여기에 상품 이미지를 배치하세요' : 'Place product image here'}<br><small>${s.section_type} ${locale === 'ko' ? '섹션용 이미지' : 'section visual'}</small></p></div>
+    .map((s) => {
+      const safeSectionHeadline = escapeHtml(s.headline)
+      const safeSectionType = escapeHtml(s.section_type)
+      const safeBody = escapeHtml(
+        getFallbackSectionBody({
+          sectionType: s.section_type,
+          product,
+          audience,
+          points,
+          locale,
+          categoryConfig,
+        })
+      )
+
+      return `<section class='section-${safeSectionType}' style='margin:24px 0;padding:20px;background:#fff;border-radius:14px;border:1px solid ${colors.accent}44;'>
+  <h2 style='margin:0 0 10px;color:${colors.primary};font-size:22px;'>${s.section_number}. ${safeSectionHeadline}</h2>
+  <p style='margin:0;color:#333;line-height:1.7;'>${safeBody}</p>
+  <div class='image-placeholder'><p>📷 ${locale === 'ko' ? '여기에 상품 이미지를 배치하세요' : 'Place product image here'}<br><small>${safeSectionType} ${locale === 'ko' ? '섹션용 이미지' : 'section visual'}</small></p></div>
 </section>`
-    )
+    })
     .join('\n')
 
   const isKo = locale === 'ko'
-  const brandDisplay = brand || (isKo ? '프리미엄' : 'Premium')
 
   const html = `<!DOCTYPE html>
 <html lang='${locale}'>
 <head>
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-<title>${product} ${isKo ? '상세페이지' : 'Detail Page'}</title>
+<title>${safeProduct} ${isKo ? '상세페이지' : 'Detail Page'}</title>
 <style>
  * { margin:0; padding:0; box-sizing:border-box; }
  body { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; color:#333; background:#fff; line-height:1.7; }
@@ -191,28 +281,36 @@ function buildFallback(args, disclaimer, locale, categoryConfig) {
 <body>
 <div class='page'>
 <section class='hero section-hero'>
-<h1>${brandDisplay} ${product}</h1>
-<p>${highlights[0] || (isKo ? `${audience}를 위한 선택` : `The choice for ${audience}`)}</p>
+<h1>${safeBrandDisplay} ${safeProduct}</h1>
+<p>${safeHeadline}</p>
 <div class='image-placeholder'><p>📷 ${isKo ? '여기에 상품 이미지를 배치하세요' : 'Place hero product image here'}<br><small>${isKo ? '대표 이미지/패키지컷' : 'Hero image / package shot'}</small></p></div>
 </section>
 <section class='empathy section-empathy'>
 <h2>${isKo ? '이런 고민, 있으신가요?' : 'Sound familiar?'}</h2>
-<p>${isKo ? `${audience}이라면 공감하실 거예요. ${product}이(가) 그 고민을 해결해드립니다.` : `If you're ${audience}, you'll relate. ${product} solves that problem.`}</p>
+<p>${escapeHtml(
+    isKo
+      ? `${audience}이라면 공감하실 거예요. ${product}이(가) 그 고민을 해결해드립니다.`
+      : `If you're ${audience}, you'll relate. ${product} solves that problem.`
+  )}</p>
 </section>
 <section class='features section-features'>
 <h2>${isKo ? '핵심 특징' : 'Key Features'}</h2>
 ${points
-    .map(
-      (p) => `<div class='feature-item'><strong>✅ ${p}</strong><p>${isKo ? `${audience}에게 최적화된 ${p} 기능입니다.` : `${p} feature optimized for ${audience}.`}</p></div>`
-    )
+    .map((p) => {
+      const safePoint = escapeHtml(p)
+      const safeDescription = escapeHtml(
+        isKo ? `${audience}에게 유용한 ${p} 포인트를 중심으로 안내합니다.` : `Highlights how ${p} supports ${audience}.`
+      )
+      return `<div class='feature-item'><strong>✅ ${safePoint}</strong><p>${safeDescription}</p></div>`
+    })
     .join('')}
 </section>
 ${sectionBlocks}
 <section class='closing section-closing'>
-<h2>${isKo ? `지금 ${product} 시작하세요` : `Get ${product} Today`}</h2>
+<h2>${escapeHtml(isKo ? `지금 ${product} 시작하세요` : `Get ${product} Today`)}</h2>
 <p>${isKo ? '더 나은 선택, 지금 확인해보세요.' : 'Make the better choice. Check it out now.'}</p>
 </section>
-<div class='disclaimer'>${disclaimer}</div>
+<div class='disclaimer'>${escapeHtml(disclaimer)}</div>
 </div>
 </body>
 </html>`
@@ -313,9 +411,10 @@ export async function runDetailPageGenerate(args) {
 
   enhanced.disclaimer = disclaimer
 
-  const guard = noFabricatedMetricsGuard(JSON.stringify(enhanced))
-  const cleaned = JSON.parse(guard.text)
-  cleaned.policy_violation = guard.policyViolation
-  cleaned.policy_warnings = guard.warnings
+  const guarded = applyFabricatedMetricsGuardToFields(enhanced, getGuardedDetailPageFieldPaths(enhanced))
+
+  const cleaned = guarded.payload
+  cleaned.policy_violation = guarded.policyViolation
+  cleaned.policy_warnings = guarded.warnings
   return cleaned
 }
